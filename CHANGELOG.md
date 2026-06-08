@@ -1,5 +1,13 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.15 (2026-06-08)
+
+**Marken-Namensraum**
+- Repo in die Organisation `Schubeler-Consulting` verschoben; MCP-Registry-Namespace
+  von `io.github.WhoSoEverM8/knowmind` auf `io.github.Schubeler-Consulting/knowmind`
+  (saubere, firmenkonforme Schreibweise). `mcpName`, `server.json` und `repository`
+  entsprechend angepasst.
+
 ## 0.1.14 (2026-06-08)
 
 **MCP-Registry-Namespace**

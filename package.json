@@ -1,14 +1,14 @@
 {
   "name": "knowmind",
-  "version": "0.1.14",
-  "mcpName": "io.github.WhoSoEverM8/knowmind",
+  "version": "0.1.15",
+  "mcpName": "io.github.Schubeler-Consulting/knowmind",
   "description": "Kommandozeile und lokale MCP-Vermittlung für Knowmind — das Gedächtnis für Ihre KI.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://knowmind.de",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WhoSoEverM8/knowmind.git"
+    "url": "git+https://github.com/Schubeler-Consulting/knowmind.git"
   },
   "bugs": {
     "url": "https://knowmind.de/support",

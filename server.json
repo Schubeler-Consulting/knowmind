@@ -1,20 +1,20 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.WhoSoEverM8/knowmind",
+  "name": "io.github.Schubeler-Consulting/knowmind",
   "title": "knowmind",
   "description": "Knowledge graph & long-term memory for AI agents: recall, relations, store, stats, health.",
   "websiteUrl": "https://knowmind.de",
   "repository": {
-    "url": "https://github.com/WhoSoEverM8/knowmind",
+    "url": "https://github.com/Schubeler-Consulting/knowmind",
     "source": "github"
   },
-  "version": "0.1.14",
+  "version": "0.1.15",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "knowmind",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "transport": { "type": "stdio" },
       "packageArguments": [
         { "type": "positional", "value": "mcp" }
