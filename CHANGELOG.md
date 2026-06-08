@@ -1,5 +1,12 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.14 (2026-06-08)
+
+**MCP-Registry-Namespace**
+- `mcpName` auf die korrekte, case-sensitive Schreibweise `io.github.WhoSoEverM8/knowmind`
+  gesetzt (muss dem GitHub-Benutzernamen exakt entsprechen, sonst lehnt die offizielle
+  MCP-Registry den Publish mit 403 ab).
+
 ## 0.1.13 (2026-06-08)
 
 **Konsistenz**

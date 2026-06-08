@@ -1,7 +1,7 @@
 {
   "name": "knowmind",
-  "version": "0.1.13",
-  "mcpName": "io.github.whosoeverm8/knowmind",
+  "version": "0.1.14",
+  "mcpName": "io.github.WhoSoEverM8/knowmind",
   "description": "Kommandozeile und lokale MCP-Vermittlung für Knowmind — das Gedächtnis für Ihre KI.",
   "type": "module",
   "license": "Apache-2.0",

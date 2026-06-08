@@ -2,7 +2,7 @@
 
 Kommandozeile und lokaler MCP-Server für Knowmind — das Gedächtnis für Ihre KI.
 
-<!-- mcp-name: io.github.whosoeverm8/knowmind -->
+<!-- mcp-name: io.github.WhoSoEverM8/knowmind -->
 
 [![npm](https://img.shields.io/npm/v/knowmind)](https://www.npmjs.com/package/knowmind) · Apache-2.0 · [knowmind.de](https://knowmind.de)
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.whosoeverm8/knowmind",
+  "name": "io.github.WhoSoEverM8/knowmind",
   "title": "knowmind",
   "description": "Knowledge graph & long-term memory for AI agents: recall, relations, store, stats, health.",
   "websiteUrl": "https://knowmind.de",
@@ -8,13 +8,13 @@
     "url": "https://github.com/WhoSoEverM8/knowmind",
     "source": "github"
   },
-  "version": "0.1.13",
+  "version": "0.1.14",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "knowmind",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "transport": { "type": "stdio" },
       "packageArguments": [
         { "type": "positional", "value": "mcp" }
