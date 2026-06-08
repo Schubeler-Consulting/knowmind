@@ -1,6 +1,7 @@
 # knowmind
 
-Kommandozeile und lokaler MCP-Server für Knowmind — das Gedächtnis für Ihre KI.
+**Das Agentengehirn aus Deutschland.** Langzeitgedächtnis und Wissensgraph für Ihre KI —
+CLI + MCP-Server. Daten und Server in Deutschland (Hosting bei Hetzner, Nürnberg).
 
 <!-- mcp-name: io.github.Schubeler-Consulting/knowmind -->
 
@@ -106,3 +107,26 @@ Token kann statt per `env` auch lokal via `knowmind login --token kmt_xxx` (→ 
 - `knowmind.health` — Verfügbarkeits-Status der Plattform
 
 Die zulässigen Beziehungstypen sind im Tool-Schema von `knowmind.link` als Enum hinterlegt — der Agent sieht sie direkt bei der Werkzeug-Auswahl. Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden serverseitig automatisch mit angelegt.
+
+## Daten in Deutschland
+
+knowmind ist das Agentengehirn aus Deutschland: die Plattform läuft auf Servern in Deutschland
+(Hetzner, Nürnberg), die Daten verlassen den deutschen Rechtsraum nicht. Auftragsverarbeitung
+(AVV) nach Art. 28 DSGVO verfügbar: https://knowmind.de/legal/avv
+
+## Haftung & Nutzung (Disclaimer)
+
+- **Software:** Dieses Paket steht unter der **Apache-Lizenz 2.0** und wird „AS IS" ohne jegliche
+  Gewährleistung bereitgestellt; die Haftung ist im Rahmen der Lizenz (Abschnitte 7 und 8)
+  ausgeschlossen bzw. beschränkt. Siehe `LICENSE`.
+- **Eigenes Konto, eigener Token:** knowmind bündelt keine Zugangsdaten. Sie nutzen Ihren eigenen
+  knowmind.de-Account und API-Token. Anlegen: https://knowmind.de/dashboard/api-tokens
+- **Eigene Kosten/Verbrauch:** Jede Nutzung (API-Anfragen, Token-/Kontingentverbrauch, ggf.
+  modellbezogene Kosten) erfolgt über Ihren eigenen Account und auf Ihre Verantwortung. Verbrauch
+  und Kosten sind im knowmind.de-Dashboard transparent einsehbar.
+- **Service-Bedingungen:** Für die Nutzung der gehosteten Plattform gelten die AGB und die
+  Datenschutzerklärung von knowmind.de:
+  [AGB](https://knowmind.de/legal/agb) · [Datenschutz](https://knowmind.de/legal/datenschutz) ·
+  [AVV](https://knowmind.de/legal/avv) · [Impressum](https://knowmind.de/legal/impressum)
+
+Anbieter: Schübeler Consulting — Johann Jörgen Schübeler. Kontakt: info@schuebeler-consulting.de

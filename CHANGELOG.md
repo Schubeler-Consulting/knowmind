@@ -1,5 +1,15 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.16 (2026-06-08)
+
+**Positionierung + rechtliche Absicherung**
+- „Das Agentengehirn aus Deutschland" als Positionierung in README + npm/Registry-Beschreibung
+  (Server in Deutschland, Hetzner/Nürnberg).
+- Volle **Apache-2.0-Lizenz** in `LICENSE` (vorher nur 17-Zeilen-Header-Stub ohne die bindenden
+  Abschnitte 7 Disclaimer of Warranty + 8 Limitation of Liability).
+- **Haftung & Nutzung**-Abschnitt im README: „AS IS" ohne Gewährleistung, Bring-your-own-Token,
+  eigener Verbrauch/eigene Kosten, Verweis auf AGB/Datenschutz/AVV/Impressum von knowmind.de.
+
 ## 0.1.15 (2026-06-08)
 
 **Marken-Namensraum**
