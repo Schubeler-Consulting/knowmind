@@ -98,15 +98,24 @@ Token kann statt per `env` auch lokal via `knowmind login --token kmt_xxx` (→ 
 
 ## Tools (im MCP-Modus)
 
-- `knowmind.recall` — Hybride Suche im Wissensspeicher des Mandanten
-- `knowmind.store` — Neue Erinnerung anlegen (Titel + Inhalt)
-- `knowmind.link` — Typisierte Beziehung zwischen zwei Erinnerungen anlegen (Inverse wird automatisch gesetzt)
-- `knowmind.unlink` — Beziehung wieder entfernen (samt Inverse)
-- `knowmind.relations` — Beziehungen einer Erinnerung auflisten
-- `knowmind.stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
-- `knowmind.health` — Verfügbarkeits-Status der Plattform
+Der MCP-Modus ist seit 0.1.18 ein reiner Proxy auf die Plattform: Tool-Namen,
+Schemas und Safety-Annotations kommen direkt vom Server und sind damit immer
+identisch mit dem Remote-Connector (`https://knowmind.de/api/mcp/v1`).
 
-Die zulässigen Beziehungstypen sind im Tool-Schema von `knowmind.link` als Enum hinterlegt — der Agent sieht sie direkt bei der Werkzeug-Auswahl. Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden serverseitig automatisch mit angelegt.
+- `knowmind_recall` — Hybride Suche im Wissensspeicher des Mandanten
+- `knowmind_recall_at_time` — Recall mit Zeitfilter (bi-temporal)
+- `knowmind_store_memory` — Neue Erinnerung anlegen (Titel + Inhalt)
+- `knowmind_upload_document` — Längeren Text als Dokument ingestieren
+- `knowmind_update_fact` — Fakt bi-temporal aktualisieren (Historie bleibt)
+- `knowmind_link` — Typisierte Beziehung anlegen (Inverse wird automatisch gesetzt)
+- `knowmind_unlink` — Beziehung wieder entfernen (samt Inverse)
+- `knowmind_list_relations` — Beziehungen einer Erinnerung auflisten
+- `knowmind_stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
+- `knowmind_health` — Verfügbarkeits-Status der Plattform
+
+Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden
+serverseitig automatisch mit angelegt. Hinweis: `knowmind upload` als
+CLI-Befehl läuft über die REST-Schnittstelle (`/api/documents`), nicht über MCP.
 
 ## Daten in Deutschland
 

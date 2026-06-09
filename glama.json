@@ -1,4 +1,12 @@
 {
   "$schema": "https://glama.ai/mcp/schemas/server.json",
-  "maintainers": ["WhoSoEverM8"]
+  "maintainers": [
+    "WhoSoEverM8"
+  ],
+  "version": "0.1.18",
+  "description": "Das Agentengehirn aus Deutschland: persistentes Gedächtnis für KI-Agenten (Recall, Wissensgraph, bi-temporale Fakten). EU-Hosting, BYOK.",
+  "homepage": "https://knowmind.de",
+  "repository": {
+    "url": "https://github.com/Schubeler-Consulting/knowmind"
+  }
 }
