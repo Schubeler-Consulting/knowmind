@@ -105,11 +105,12 @@ identisch mit dem Remote-Connector (`https://knowmind.de/api/mcp/v1`).
 - `knowmind_recall` — Hybride Suche im Wissensspeicher des Mandanten
 - `knowmind_recall_at_time` — Recall mit Zeitfilter (bi-temporal)
 - `knowmind_store_memory` — Neue Erinnerung anlegen (Titel + Inhalt)
-- `knowmind_upload_document` — Längeren Text als Dokument ingestieren
+- `knowmind_upload_document` — Längeren Text als Dokument ingestieren (Upsert-per-Titel: gleicher Titel ersetzt die alte Version)
 - `knowmind_update_fact` — Fakt bi-temporal aktualisieren (Historie bleibt)
 - `knowmind_link` — Typisierte Beziehung anlegen (Inverse wird automatisch gesetzt)
 - `knowmind_unlink` — Beziehung wieder entfernen (samt Inverse)
 - `knowmind_list_relations` — Beziehungen einer Erinnerung auflisten
+- `knowmind_list_recent` — Zuletzt angelegte Dokumente/Memories des Mandanten auflisten, sortiert nach Anlagedatum absteigend
 - `knowmind_stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
 - `knowmind_health` — Verfügbarkeits-Status der Plattform
 

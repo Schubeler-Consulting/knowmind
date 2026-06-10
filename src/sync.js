@@ -106,16 +106,21 @@ export async function syncDirectory(dir, options = {}) {
     try {
       const result = await uploadDocument(title, content);
       uploaded += 1;
+      // Server antwortet bei sha-identischem Inhalt mit unchanged:true
+      // (historisch duplicate:true) — beide Felder akzeptieren.
+      const isDuplicate = Boolean(result.unchanged ?? result.duplicate);
       manifest.files[rel] = {
         sha256: hash,
         documentId: result.id ?? null,
         lastSync: new Date().toISOString(),
-        duplicate: Boolean(result.duplicate),
+        duplicate: isDuplicate,
       };
-      // Manifest regelmäßig zwischenspeichern, damit ein Abbruch mid-run
-      // nicht alle Fortschritte verliert.
-      if (uploaded % 10 === 0) saveManifest(manifestPath, manifest);
-      const flag = result.duplicate ? "dup " : "new ";
+      // Manifest nach JEDEM erfolgreichen Upload speichern (2026-06-10):
+      // Der Stop-Hook killt den Sync nach 120 s — mit 10er-Batches gingen
+      // Manifest-Stände verloren und identischer Inhalt wurde endlos
+      // re-POSTet (Ursache der Ingest-500-Schleife 26.–27.05.).
+      saveManifest(manifestPath, manifest);
+      const flag = isDuplicate ? "dup " : "new ";
       process.stdout.write(`  [${scanned}/${total}] ${flag} ${rel}\n`);
     } catch (e) {
       failed += 1;

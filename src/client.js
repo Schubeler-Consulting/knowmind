@@ -29,7 +29,7 @@ async function rpc(method, params, options = {}) {
 
 export async function recall(query, { k = 5, hops = 2 } = {}) {
   const res = await rpc("tools/call", {
-    name: "knowmind.recall",
+    name: "knowmind_recall",
     arguments: { query, k, hops },
   });
   // MCP-Antwort: { content: [{ type: "text", text: "<JSON>" }] }
@@ -39,12 +39,12 @@ export async function recall(query, { k = 5, hops = 2 } = {}) {
 }
 
 export async function stats() {
-  const res = await rpc("tools/call", { name: "knowmind.stats", arguments: {} });
+  const res = await rpc("tools/call", { name: "knowmind_stats", arguments: {} });
   return JSON.parse(res.content?.[0]?.text ?? "{}");
 }
 
 export async function health() {
-  const res = await rpc("tools/call", { name: "knowmind.health", arguments: {} });
+  const res = await rpc("tools/call", { name: "knowmind_health", arguments: {} });
   return JSON.parse(res.content?.[0]?.text ?? "{}");
 }
 

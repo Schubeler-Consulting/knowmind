@@ -93,7 +93,7 @@ async function runLogin() {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
-      params: { name: "knowmind.health", arguments: {} },
+      params: { name: "knowmind_health", arguments: {} },
     }),
   }).catch((e) => ({ ok: false, _netError: e.message }));
   if (r._netError) {
@@ -144,7 +144,11 @@ async function runUpload() {
     title = title ?? basename(path);
   }
   const data = await uploadDocument(title, content);
-  console.log(`Indexiert: ${data.chunksWritten} Chunks (Provider ${data.embeddingProvider}).`);
+  if (data.unchanged || data.duplicate) {
+    console.log(`Unverändert/Duplikat: Inhalt liegt bereits indexiert vor (Doc ${data.id ?? "?"}).`);
+  } else {
+    console.log(`Indexiert: ${data.chunksWritten} Chunks (Provider ${data.embeddingProvider}).`);
+  }
 }
 
 async function runSync() {

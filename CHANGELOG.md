@@ -1,5 +1,40 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.19 (2026-06-10)
+
+**CLI-Befehle repariert (search/stats/health/login)**
+- `knowmind search`, `knowmind stats`, `knowmind health` und die Token-Verifikation in
+  `knowmind login` riefen noch die alten Punkt-Tool-Namen (`knowmind.recall`, `knowmind.stats`,
+  `knowmind.health`) auf — der Server kennt seit der MCP-Namensschema-Umstellung nur noch
+  Unterstrich-Namen (`knowmind_recall`, …). Alle direkten Tool-Calls umgestellt; der
+  `knowmind mcp`-Proxy war nicht betroffen (reicht seit 0.1.18 alles durch).
+
+**Sync-Härtung**
+- `knowmind sync` speichert das Manifest jetzt nach JEDEM erfolgreichen Upload statt in
+  10er-Batches. Bricht der Prozess mitten im Lauf ab, gehen keine Manifest-Stände mehr
+  verloren — identischer Inhalt wurde sonst beim nächsten Lauf endlos re-POSTet.
+- Server-Antwort `unchanged:true` (sha-identischer Inhalt, historisch `duplicate:true`)
+  wird in Manifest und Ausgabe sauber erkannt.
+
+**Saubere Upload-Meldung**
+- `knowmind upload` meldet bei unverändertem/dupliziertem Inhalt jetzt verständlich
+  „Unverändert/Duplikat …" statt `undefined Chunks (Provider undefined)`.
+
+**Doku**
+- README: Tool-Liste auf die 11 Server-Tools aktualisiert (`knowmind_list_recent` ergänzt);
+  `knowmind_upload_document` als Upsert-per-Titel beschrieben.
+
+## 0.1.18 (2026-06-09)
+
+**MCP-stdio als reiner Server-Proxy**
+- `knowmind mcp` hält keine lokalen Tool-Definitionen mehr: `tools/list`, `tools/call`,
+  `prompts/*` und alle weiteren Methoden werden 1:1 an den Remote-Endpoint
+  (`/api/mcp/v1`) durchgereicht. Tool-Namen, Schemas und Safety-Annotations kommen
+  direkt vom Server — eine Abweichung wie der Namens-Drift `knowmind.*` vs.
+  `knowmind_*` (machte 0.1.17 gegen den aktualisierten Endpoint unbrauchbar) ist
+  damit konstruktiv ausgeschlossen.
+- `initialize` meldet die echte Paketversion; Notifications werden korrekt ignoriert.
+
 ## 0.1.17 (2026-06-08)
 
 **Rechts-Korrekturen (nach anwaltlicher Vorprüfung)**
