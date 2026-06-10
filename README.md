@@ -34,12 +34,50 @@ export KNOWMIND_API_URL=https://knowmind.de
 ## Befehle
 
 ```
+knowmind init                       Automatische Gedächtnis-Pflege im KI-Client einrichten
 knowmind search "Wo läuft die OKR-App?"
 knowmind upload notizen.md --title "Meeting Notizen 2026-05-12"
 knowmind stats
 knowmind health
 knowmind config
 ```
+
+## Automatische Pflege einrichten (`knowmind init`)
+
+Damit Ihre KI knowmind selbsttätig pflegt — **Recall vor jeder Aufgabe**, **Sichern nach
+jeder sicherungswürdigen Runde** — richtet `knowmind init` die passenden Mechanismen für
+Ihren Client ein. Der Befehl erkennt den Client am Projekt- und Home-Verzeichnis
+(`.claude/`, `.cursor/`, `~/.codex/`) oder Sie wählen ihn explizit.
+
+```
+knowmind init                          # Client automatisch erkennen
+knowmind init --client claude-code     # gezielt für Claude Code
+knowmind init --client cursor          # gezielt für Cursor
+knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nichts)
+```
+
+**Was eingerichtet wird:**
+
+- **Claude Code** — projektlokale Hooks in `.claude/`:
+  - *UserPromptSubmit* → ruft vor jeder echten Frage `knowmind_recall` auf und reicht die
+    Top-Treffer als Kontext nach (Memory-First, automatisch).
+  - *Stop* → erinnert die KI daran, mit `knowmind_store_memory` zu sichern, wenn die Runde
+    Sicherungswürdiges enthielt (Deploy/Commit, neue Regel, Entscheidung) und noch nichts
+    gespeichert wurde.
+  - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
+- **Cursor** — `.cursor/rules/knowmind.mdc` mit der Memory-First-Regel (`alwaysApply`).
+- **Claude Desktop / Codex / generisch** — kein automatischer Hook-Mechanismus vorhanden;
+  der Befehl zeigt den Memory-First-Text zum manuellen Einfügen (siehe Grenze unten).
+
+**Idempotent & nicht-destruktiv:** Ein zweiter Lauf erzeugt keine Duplikate
+(marker-/befehls-basierte Ersetzung); bestehende fremde Dateien und Hooks bleiben
+unangetastet. Mit `--dry-run` sehen Sie jede Aktion vorab.
+
+> **Ehrliche Grenze:** Eine *harte* Erzwingung der Pflege gibt es nur in Clients mit
+> Hook-/Rule-Mechanismus (Claude Code, Cursor). In Clients ohne solchen Mechanismus
+> (z. B. Claude Desktop, Codex CLI) wirken nur die **MCP-instructions** (werden beim
+> Verbinden gelesen) und die **MCP-prompts** — das ist eine weiche, modellabhängige
+> Steuerung, keine technische Garantie.
 
 ## MCP-Server einrichten
 

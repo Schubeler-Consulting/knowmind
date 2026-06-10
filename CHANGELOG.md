@@ -1,5 +1,37 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.20 (2026-06-10)
+
+**MCP-`instructions` erreichen jetzt den Client (initialize wird durchgereicht)**
+- `knowmind mcp` beantwortete `initialize` bisher lokal und unterschlug damit das
+  serverseitige `instructions`-Feld. Der Proxy fragt `initialize` nun beim Server an und
+  übernimmt `serverInfo` (Name/Version aus zentraler Quelle), `capabilities` und
+  `instructions` aus der Server-Antwort. Damit liest jeder MCP-Client beim Verbinden die
+  Memory-First-Betriebsanweisung des Servers — der client-übergreifende Pflege-Hebel
+  OHNE manuelles Setup. Bei Server-Fehler/Offline fällt der Proxy auf den lokalen Default
+  zurück (Proxy-Charakter + Offline-Robustheit bleiben).
+- Serverseitig (knowmind.de) liefert das `initialize`-Result jetzt ein `instructions`-Feld
+  (Recall-First + proaktives Speichern) sowie `serverInfo.version` aus einer einzigen Quelle.
+
+**Neuer Befehl: `knowmind init` — automatische Gedächtnis-Pflege einrichten**
+- `knowmind init [--client claude-code|cursor|auto] [--dry-run]` richtet die
+  Memory-First-Automatik im KI-Client des Nutzers ein, ohne manuelles Hook-Gefrickel.
+  Client wird am Projekt-/Home-Verzeichnis erkannt (`.claude/`, `.cursor/`, `~/.codex/`)
+  oder explizit gewählt.
+- **Claude Code:** schreibt projektlokale Hooks (`UserPromptSubmit` → `knowmind_recall`
+  vor jeder Frage; `Stop` → Capture-Reminder, der an `knowmind_store_memory` erinnert,
+  wenn die Runde Sicherungswürdiges enthielt) + einen Memory-First-Block in `./CLAUDE.md`.
+  Die Hooks reden gegen die Plattform (`npx knowmind search` / die MCP-Tools), nicht
+  gegen lokale `.md`-Dateien.
+- **Cursor:** schreibt `.cursor/rules/knowmind.mdc` (Memory-First-Regel, `alwaysApply`).
+- **Claude Desktop / Codex / generisch:** kein Hook-Mechanismus — zeigt den
+  Memory-First-Text zum manuellen Einfügen und benennt die ehrliche Grenze (nur
+  MCP-instructions + MCP-prompts wirken, keine harte Erzwingung).
+- **Idempotent & nicht-destruktiv:** marker-/befehls-basierte Ersetzung
+  (`<!-- BEGIN/END knowmind -->`); zweiter Lauf erzeugt keine Duplikate, fremde Dateien
+  und Hooks bleiben unangetastet. `--dry-run` zeigt jede Aktion ohne zu schreiben.
+- Tests in `src/init.test.js` (Idempotenz, Client-Erkennung, dry-run, Marker-Upsert).
+
 ## 0.1.19 (2026-06-10)
 
 **CLI-Befehle repariert (search/stats/health/login)**

@@ -23,6 +23,7 @@ import {
 import { loadConfig, saveConfig, configPath, VERSION } from "../src/config.js";
 import { runStdioServer } from "../src/mcp-stdio.js";
 import { syncDirectory } from "../src/sync.js";
+import { runInit } from "../src/init.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -49,6 +50,9 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
+  knowmind init [--client claude-code|cursor|auto] [--dry-run]
+                       Automatische Gedächtnis-Pflege im KI-Client einrichten
+                       (Hooks/Regeln + Memory-First-Block). Idempotent.
   knowmind config      Aktuelle Konfiguration anzeigen
   knowmind search "Frage" [-k 5] [--hops 2]
                        Hybrid-Recall gegen den Tenant-Korpus
@@ -180,6 +184,12 @@ async function runConfig() {
   console.log(`Token:   ${c.token ? c.token.slice(0, 12) + "…" : "(keiner)"}`);
 }
 
+async function runInitCmd() {
+  const client = parseFlag("--client", "auto");
+  const dryRun = args.includes("--dry-run");
+  console.log(await runInit({ client, dryRun }));
+}
+
 // Wichtig: `process.exit(N)` reißt offene Sockets/fetch-Verbindungen mit
 // rein und triggert auf Windows/Node 22 die libuv-Assertion
 // `!(handle->flags & UV_HANDLE_CLOSING)`. Stattdessen `exitCode` setzen
@@ -210,6 +220,9 @@ try {
       break;
     case "mcp":
       await runStdioServer();
+      break;
+    case "init":
+      await runInitCmd();
       break;
     case "--help":
     case "-h":

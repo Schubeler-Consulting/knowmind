@@ -14,6 +14,11 @@
  * genau diese Abweichung (Punkt- vs. Unterstrich-Namen) hatte 0.1.17 unbrauchbar
  * gemacht, nachdem die Plattform auf das MCP-Namensschema umgestellt wurde.
  *
+ * Seit 0.1.20 wird auch `initialize` an den Server durchgereicht, damit die
+ * serverseitigen `instructions` (der client-übergreifende Pflege-Hebel) und die
+ * tatsächlichen serverInfo/capabilities den Client erreichen. Bei Server-
+ * Fehler/Offline fällt der Proxy auf einen lokalen Default zurück.
+ *
  * Protokoll: stdio mit zeilenweise JSON (NDJSON-Style). Jedes Frame ist ein
  * vollständiges JSON-RPC-Objekt.
  */
@@ -22,6 +27,19 @@ import { createInterface } from "node:readline";
 
 /** Methoden, die lokal beantwortet werden (alles andere geht an den Server). */
 const LOCAL_METHODS = new Set(["initialize", "ping"]);
+
+/**
+ * Lokaler Fallback-result für `initialize`, falls der Server nicht erreichbar
+ * ist oder keine verwertbare Antwort liefert. Hält den Proxy offline-robust.
+ * Die serverInfo.version stammt aus der package.json (VERSION).
+ */
+function localInitializeResult() {
+  return {
+    protocolVersion: "2025-06-18",
+    serverInfo: { name: "knowmind", version: VERSION },
+    capabilities: { tools: {}, prompts: {} },
+  };
+}
 
 async function forwardToServer(method, params) {
   const { apiUrl, token } = loadConfig();
@@ -171,16 +189,40 @@ export async function runStdioServer() {
           write({ jsonrpc: "2.0", id: req.id ?? null, result: {} });
           continue;
         }
-        // initialize
-        write({
-          jsonrpc: "2.0",
-          id: req.id ?? null,
-          result: {
-            protocolVersion: "2025-06-18",
-            serverInfo: { name: "knowmind", version: VERSION },
-            capabilities: { tools: {}, prompts: {} },
-          },
-        });
+        // initialize: An den Server durchreichen und serverInfo / instructions /
+        // capabilities aus der Server-Antwort übernehmen. Nur so erreichen die
+        // serverseitigen `instructions` (der automatische Pflege-Hebel) den
+        // MCP-Client. Bei Server-Fehler/Offline auf den lokalen Default
+        // zurückfallen — Proxy-Charakter und Offline-Robustheit bleiben.
+        let initResult = localInitializeResult();
+        try {
+          const upstreamInit = await forwardToServer("initialize", req.params);
+          const serverResult =
+            upstreamInit && typeof upstreamInit === "object" && "result" in upstreamInit
+              ? upstreamInit.result
+              : null;
+          if (serverResult && typeof serverResult === "object") {
+            initResult = {
+              // protocolVersion vom Server, sonst lokaler Default.
+              protocolVersion: serverResult.protocolVersion ?? initResult.protocolVersion,
+              // serverInfo vom Server (Name/Version aus zentraler Quelle), sonst lokal.
+              serverInfo: serverResult.serverInfo ?? initResult.serverInfo,
+              // capabilities vom Server, sonst lokal.
+              capabilities: serverResult.capabilities ?? initResult.capabilities,
+              // instructions NUR übernehmen, wenn der Server sie liefert.
+              ...(typeof serverResult.instructions === "string"
+                ? { instructions: serverResult.instructions }
+                : {}),
+            };
+          }
+        } catch (e) {
+          // Server nicht erreichbar o.Ä. → lokaler Default. Der Client soll trotzdem
+          // initialisieren können; Tool-Calls scheitern dann ohnehin mit klarer Meldung.
+          process.stderr.write(
+            `[knowmind] initialize-Forward fehlgeschlagen, lokaler Default: ${e instanceof Error ? e.message : String(e)}\n`,
+          );
+        }
+        write({ jsonrpc: "2.0", id: req.id ?? null, result: initResult });
         continue;
       }
 

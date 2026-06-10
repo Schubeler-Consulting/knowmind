@@ -1,0 +1,6 @@
+# Tests gehören nicht ins veröffentlichte Paket.
+src/*.test.js
+*.tgz
+*.bak
+proxy_err.log
+fb_err.log
