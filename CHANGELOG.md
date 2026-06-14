@@ -56,7 +56,7 @@
   gegen lokale `.md`-Dateien.
 - **Cursor:** schreibt `.cursor/rules/knowmind.mdc` (Memory-First-Regel, `alwaysApply`).
 - **Claude Desktop / Codex / generisch:** kein Hook-Mechanismus — zeigt den
-  Memory-First-Text zum manuellen Einfügen und benennt die ehrliche Grenze (nur
+  Memory-First-Text zum manuellen Einfügen und benennt die Grenze (nur
   MCP-instructions + MCP-prompts wirken, keine harte Erzwingung).
 - **Idempotent & nicht-destruktiv:** marker-/befehls-basierte Ersetzung
   (`<!-- BEGIN/END knowmind -->`); zweiter Lauf erzeugt keine Duplikate, fremde Dateien

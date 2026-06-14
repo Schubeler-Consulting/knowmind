@@ -73,11 +73,11 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 (marker-/befehls-basierte Ersetzung); bestehende fremde Dateien und Hooks bleiben
 unangetastet. Mit `--dry-run` sehen Sie jede Aktion vorab.
 
-> **Ehrliche Grenze:** Eine *harte* Erzwingung der Pflege gibt es nur in Clients mit
+> **Grenze der Automatik:** Eine *harte* Erzwingung der Pflege gibt es nur in Clients mit
 > Hook-/Rule-Mechanismus (Claude Code, Cursor). In Clients ohne solchen Mechanismus
-> (z. B. Claude Desktop, Codex CLI) wirken nur die **MCP-instructions** (werden beim
-> Verbinden gelesen) und die **MCP-prompts** — das ist eine weiche, modellabhängige
-> Steuerung, keine technische Garantie.
+> (z. B. Claude Desktop, Codex CLI) greifen die **MCP-instructions** (werden beim
+> Verbinden gelesen) und die **MCP-prompts** — eine modellabhängige Steuerung ohne
+> technische Garantie.
 
 ## MCP-Server einrichten
 
