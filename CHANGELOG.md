@@ -1,5 +1,18 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.23 (2026-06-20)
+
+**Neuer Befehl `knowmind install <ide>`**
+- Trägt knowmind als MCP-Server in die richtige Config-Datei einer IDE ein.
+- Unterstützt drei Schema-Familien: `mcpServers` (Cursor, Windsurf, Antigravity,
+  Claude Desktop, Claude Code-Projekt), `servers`+`inputs` (VS Code) und
+  `context_servers` (Zed); JetBrains und Claude-Code-User-Scope geben ein
+  Snippet bzw. den `claude mcp add`-Befehl aus.
+- Flags: `--project`, `--print`, `--dry-run`, `--token`, `--api`.
+- Token wird per Default nie im Klartext geschrieben (Env-/Input-Referenz oder
+  Platzhalter mit Warnung); Schreibvorgänge sind ein idempotenter JSON-Merge,
+  der vorhandene Fremd-Server erhält.
+
 ## 0.1.22 (2026-06-11)
 
 **Discovery-Modus ohne Token (Introspection-fähig)**
