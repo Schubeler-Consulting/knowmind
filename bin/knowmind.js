@@ -24,6 +24,7 @@ import { loadConfig, saveConfig, configPath, VERSION } from "../src/config.js";
 import { runStdioServer } from "../src/mcp-stdio.js";
 import { syncDirectory } from "../src/sync.js";
 import { runInit } from "../src/init.js";
+import { runInstall } from "../src/install.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -64,6 +65,10 @@ Befehle:
   knowmind stats       Memory- und Edge-Counter des Tenants
   knowmind health      Health-Check der Plattform
   knowmind mcp         Stdio-MCP-Server für lokale AI-Clients
+  knowmind install <ide> [--project] [--print] [--token T] [--api URL]
+                       knowmind als MCP-Server in eine IDE eintragen
+                       (cursor, vscode, windsurf, antigravity, zed, jetbrains,
+                       claude-code, claude-desktop, all). 'install list' zeigt alle.
 
 ENV-Override:
   KNOWMIND_API_URL     z. B. https://knowmind.de
@@ -190,6 +195,17 @@ async function runInitCmd() {
   console.log(await runInit({ client, dryRun }));
 }
 
+async function runInstallCmd() {
+  runInstall({
+    ideKey: args[1] && !args[1].startsWith("-") ? args[1] : null,
+    project: args.includes("--project"),
+    dryRun: args.includes("--dry-run"),
+    printOnly: args.includes("--print"),
+    apiUrl: parseFlag("--api", null),
+    literalToken: parseFlag("--token", null),
+  });
+}
+
 // Wichtig: `process.exit(N)` reißt offene Sockets/fetch-Verbindungen mit
 // rein und triggert auf Windows/Node 22 die libuv-Assertion
 // `!(handle->flags & UV_HANDLE_CLOSING)`. Stattdessen `exitCode` setzen
@@ -220,6 +236,9 @@ try {
       break;
     case "mcp":
       await runStdioServer();
+      break;
+    case "install":
+      await runInstallCmd();
       break;
     case "init":
       await runInitCmd();
