@@ -116,7 +116,7 @@ async function probeAuth() {
     return {
       ok: false,
       reason:
-        "Kein Knowmind-Token konfiguriert. Bitte `knowmind login` im Terminal ausführen.",
+        "Kein Knowmind-Token konfiguriert. Kostenloses Konto + Token: https://knowmind.de/signin?mode=register (danach Dashboard -> API-Tokens), dann `knowmind login` im Terminal.",
     };
   }
   if (!cfg.token.startsWith("kmt_")) {
@@ -181,7 +181,7 @@ export async function runStdioServer() {
     ? {
         ok: false,
         reason:
-          "Kein Knowmind-Token konfiguriert. Bitte `knowmind login` im Terminal ausführen.",
+          "Kein Knowmind-Token konfiguriert. Kostenloses Konto + Token: https://knowmind.de/signin?mode=register (danach Dashboard -> API-Tokens), dann `knowmind login` im Terminal.",
       }
     : await probeAuth();
   if (discoveryMode) {

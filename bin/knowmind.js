@@ -76,10 +76,29 @@ ENV-Override:
 `);
 }
 
+/**
+ * Klarer Hinweis, wo man ein kostenloses Konto + Token bekommt. Wird gezeigt,
+ * sobald (noch) kein gültiger Token vorliegt — der häufigste Stolperstein für
+ * Erstnutzer. API/CLI sind im kostenlosen Tarif enthalten (bis 2.500 Memories).
+ * apiUrl wird dynamisch bezogen (--api / KNOWMIND_API_URL / Default), nie geraten.
+ */
+function printRegisterHint(api) {
+  const base = api || process.env.KNOWMIND_API_URL || "https://knowmind.de";
+  console.log(
+    "\nknowmind braucht ein kostenloses Konto + einen API-Token:\n" +
+      `  1. Konto anlegen:  ${base}/signin?mode=register\n` +
+      `  2. Token erzeugen: ${base}/dashboard/tokens  (Dashboard -> API-Tokens -> Token erstellen)\n` +
+      "  3. Einloggen:      knowmind login --token kmt_...\n\n" +
+      "API und CLI sind im kostenlosen Tarif enthalten (bis 2.500 Erinnerungen).\n",
+  );
+}
+
 async function runLogin() {
   let token = parseFlag("--token", null);
   const api = parseFlag("--api", null);
   if (!token) {
+    // Kein Token übergeben -> erst zeigen, wo man ihn herbekommt, dann fragen.
+    printRegisterHint(api);
     // Interaktiv von stdin lesen
     process.stdout.write("API-Token (kmt_…): ");
     const line = await new Promise((resolve) => {
@@ -87,8 +106,10 @@ async function runLogin() {
     });
     token = line;
   }
-  if (!token || !token.startsWith("kmt_"))
+  if (!token || !token.startsWith("kmt_")) {
+    printRegisterHint(api);
     throw new Error("Token muss mit kmt_ beginnen.");
+  }
 
   // Vor dem Speichern: Token gegen Server verifizieren. Sonst wäre jeder
   // Phantasie-String akzeptiert und alle späteren Aufrufe scheitern erst
@@ -114,6 +135,7 @@ async function runLogin() {
     process.stdout.write("ABGELEHNT\n");
     const code = data.error?.code ?? r.status;
     const msg = data.error?.message ?? `HTTP ${r.status}`;
+    printRegisterHint(api);
     throw new Error(`Token ungültig: ${code} — ${msg}`);
   }
   process.stdout.write("ok\n");

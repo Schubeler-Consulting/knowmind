@@ -252,4 +252,16 @@ export function runInstall(opts) {
       console.log(`    → ${path} nutzt \${KNOWMIND_TOKEN} aus der Umgebung (git-sicher).`);
     }
   }
+
+  // Wer ohne --token installiert, braucht noch einen Token aus einem (kostenlosen)
+  // Konto — genau hier scheitern Erstnutzer. Daher der klare Weg zum Abschluss.
+  if (!literalToken && !dryRun && !printOnly) {
+    const base = apiUrl || DEFAULT_API;
+    console.log(
+      "\nNoch kein Token? knowmind ist im kostenlosen Tarif voll nutzbar (bis 2.500 Erinnerungen):\n" +
+        `  1. Konto anlegen:  ${base}/signin?mode=register\n` +
+        `  2. Token erzeugen: ${base}/dashboard/tokens\n` +
+        "  3. knowmind login --token kmt_...   (oder KNOWMIND_TOKEN setzen)\n",
+    );
+  }
 }
