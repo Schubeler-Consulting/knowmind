@@ -34,6 +34,7 @@ export KNOWMIND_API_URL=https://knowmind.de
 ## Befehle
 
 ```
+npx -y knowmind install <ide>       MCP-Server im KI-Client verdrahten (claude, cursor, vscode …)
 knowmind init                       Automatische Gedächtnis-Pflege im KI-Client einrichten
 knowmind search "Wo läuft die OKR-App?"
 knowmind upload notizen.md --title "Meeting Notizen 2026-05-12"

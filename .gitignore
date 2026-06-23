@@ -8,3 +8,6 @@ node_modules/
 *.log
 _mcp-publisher/
 server.json.bak*
+
+# Marketing-Dokumente (nicht im Repo)
+docs/marketing/
