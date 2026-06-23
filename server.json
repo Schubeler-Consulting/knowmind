@@ -2,19 +2,19 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Schubeler-Consulting/knowmind",
   "title": "knowmind",
-  "description": "AI agent memory & knowledge graph, hosted in Germany: recall, relations, store, stats.",
+  "description": "AI agent memory & knowledge graph, hosted in Germany (GDPR): recall, relations, store, stats. Open-core, MCP-native.",
   "websiteUrl": "https://knowmind.de",
   "repository": {
     "url": "https://github.com/Schubeler-Consulting/knowmind",
     "source": "github"
   },
-  "version": "0.1.22",
+  "version": "0.1.25",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "knowmind",
-      "version": "0.1.22",
+      "version": "0.1.25",
       "transport": { "type": "stdio" },
       "packageArguments": [
         { "type": "positional", "value": "mcp" }

@@ -51,9 +51,10 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
-  knowmind init [--client claude-code|cursor|auto] [--dry-run]
+  knowmind init [--client claude-code|cursor|auto] [--token kmt_TOKEN] [--api URL] [--dry-run]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
+                       --token/--api legen die Config gleich mit an.
   knowmind config      Aktuelle Konfiguration anzeigen
   knowmind search "Frage" [-k 5] [--hops 2]
                        Hybrid-Recall gegen den Tenant-Korpus
@@ -91,6 +92,27 @@ function printRegisterHint(api) {
       "  3. Einloggen:      knowmind login --token kmt_...\n\n" +
       "API und CLI sind im kostenlosen Tarif enthalten (bis 2.500 Erinnerungen).\n",
   );
+}
+
+/** Ist ein Token konfiguriert (ENV oder Config-File)? */
+function hasToken() {
+  return Boolean(process.env.KNOWMIND_TOKEN || loadConfig().token);
+}
+
+/**
+ * Geführter Abschluss nach `install`/`init`: Ohne Token bleibt die Eintragung
+ * wirkungslos (tote MCP-Konfig) — der häufigste Stolperstein. Bei vorhandenem
+ * Token: kurze Bestätigung. Sonst: deutlicher Schluss-Schritt mit Anleitung.
+ */
+function finishOnboardingHint() {
+  if (hasToken()) {
+    console.log("\n✓ Token gefunden — knowmind ist startklar, sobald der Client neu lädt.");
+    return;
+  }
+  console.log(
+    "\n⚠ LETZTER SCHRITT: Ohne API-Token ist die Eintragung noch wirkungslos (keine Verbindung).",
+  );
+  printRegisterHint(parseFlag("--api", null));
 }
 
 async function runLogin() {
@@ -214,18 +236,34 @@ async function runConfig() {
 async function runInitCmd() {
   const client = parseFlag("--client", "auto");
   const dryRun = args.includes("--dry-run");
+  // Konsistenz zu `install`: --token/--api direkt verarbeiten und in der Config
+  // ablegen, damit die erzeugten Hooks (sie lesen Token/URL aus ~/.knowmind/
+  // config.json bzw. ENV) sofort funktionieren statt still ins Leere zu laufen.
+  const token = parseFlag("--token", null);
+  const api = parseFlag("--api", null);
+  if ((token || api) && !dryRun) {
+    if (token && !token.startsWith("kmt_")) throw new Error("Token muss mit kmt_ beginnen.");
+    const where = saveConfig({ ...(token ? { token } : {}), ...(api ? { apiUrl: api } : {}) });
+    if (token) console.log(`Token gespeichert in ${where}.`);
+  }
   console.log(await runInit({ client, dryRun }));
+  if (!dryRun) finishOnboardingHint();
 }
 
 async function runInstallCmd() {
+  const ideKey = args[1] && !args[1].startsWith("-") ? args[1] : null;
   runInstall({
-    ideKey: args[1] && !args[1].startsWith("-") ? args[1] : null,
+    ideKey,
     project: args.includes("--project"),
     dryRun: args.includes("--dry-run"),
     printOnly: args.includes("--print"),
     apiUrl: parseFlag("--api", null),
     literalToken: parseFlag("--token", null),
   });
+  // Nach echter Eintragung (nicht bei list/--print/--dry-run) zum Token führen.
+  if (ideKey && ideKey !== "list" && !args.includes("--print") && !args.includes("--dry-run")) {
+    finishOnboardingHint();
+  }
 }
 
 // Wichtig: `process.exit(N)` reißt offene Sockets/fetch-Verbindungen mit

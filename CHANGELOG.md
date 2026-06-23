@@ -1,5 +1,16 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.25 (2026-06-23)
+
+**Geführtes Onboarding nach `install`/`init`**
+- `install` und `init` zeigen nach der Eintragung einen klaren Abschluss-Schritt:
+  Liegt kein API-Token vor, wird deutlich auf Konto + Token hingewiesen — der
+  häufigste Stolperstein, denn ohne Token bleibt die MCP-Konfig wirkungslos. Mit
+  Token: kurze Bestätigung, dass alles startklar ist.
+- `init` akzeptiert jetzt `--token kmt_…` und `--api URL` (konsistent zu `install`)
+  und legt die Config gleich mit an, damit die erzeugten Hooks sofort funktionieren,
+  statt ohne Token still ins Leere zu laufen.
+
 ## 0.1.23 (2026-06-20)
 
 **Neuer Befehl `knowmind install <ide>`**
