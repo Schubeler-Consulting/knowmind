@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Schubeler-Consulting/knowmind",
   "title": "knowmind",
-  "description": "AI agent memory & knowledge graph, hosted in Germany (GDPR): recall, relations, store, stats. Open-core, MCP-native.",
+  "description": "AI agent memory & knowledge graph, hosted in Germany (GDPR). Recall, relations, store via MCP.",
   "websiteUrl": "https://knowmind.de",
   "repository": {
     "url": "https://github.com/Schubeler-Consulting/knowmind",
