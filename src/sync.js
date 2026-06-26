@@ -104,7 +104,9 @@ export async function syncDirectory(dir, options = {}) {
 
     const title = options.titleFromContent ? deriveTitle(content, file) : basename(file, extname(file));
     try {
-      const result = await uploadDocument(title, content);
+      const result = await uploadDocument(title, content, {
+        replaceDocumentId: known?.documentId ?? undefined,
+      });
       uploaded += 1;
       // Server antwortet bei sha-identischem Inhalt mit unchanged:true
       // (historisch duplicate:true) — beide Felder akzeptieren.

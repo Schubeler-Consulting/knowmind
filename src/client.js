@@ -57,7 +57,7 @@ export async function health() {
  * rechnet selbst. Sinnvoll als Fallback, wenn der Client kein Modell
  * laden kann (z. B. RAM-knapp).
  */
-export async function uploadDocument(title, content) {
+export async function uploadDocument(title, content, opts = {}) {
   const { apiUrl, token } = loadConfig();
   if (!token) throw new Error("Kein Token konfiguriert.");
 
@@ -90,6 +90,11 @@ export async function uploadDocument(title, content) {
   } else {
     body = { title, content };
   }
+
+  // Upsert per documentId: kennt der Sync aus dem Manifest die Vorgaenger-
+  // documentId, geht sie als replaceDocumentId mit — der Server ersetzt damit
+  // genau diese Alt-Version, titelunabhaengig (verhindert Titel-Dubletten).
+  if (opts.replaceDocumentId) body.replaceDocumentId = opts.replaceDocumentId;
 
   const r = await fetch(`${apiUrl}/api/documents`, {
     method: "POST",
