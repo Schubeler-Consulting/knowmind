@@ -1,5 +1,18 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.27 (2026-07-16)
+
+**Windows: `login` erzeugte eine unlesbare config.json (P0)**
+- Der NTFS-Lockdown vergab Datei-Rechte mit Vererbungsflags `(OI)(CI)` — auf
+  Dateien sind solche ACEs wirkungslos (Inherit-Only). Ergebnis: direkt nach
+  erfolgreichem `knowmind login` war die Config für alle Konten gesperrt und
+  jeder Folgebefehl endete mit „Kein Token konfiguriert", obwohl icacls Exit 0
+  meldete. Jetzt bekommen Dateien `:F` ohne Vererbungsflags, Ordner weiterhin
+  `:(OI)(CI)F`. Gefunden im E2E-Kundendurchlauf auf Windows 11 (Deutsch).
+- Betroffen: jede Neuanmeldung unter Windows seit Einführung des Lockdowns.
+  Abhilfe für Betroffene: einmal `knowmind login --token …` mit 0.1.27
+  wiederholen (überschreibt die Config mit korrekten Rechten).
+
 ## 0.1.25 (2026-06-23)
 
 **Geführtes Onboarding nach `install`/`init`**

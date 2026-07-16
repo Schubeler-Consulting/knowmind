@@ -14,7 +14,7 @@
  *   - Beim Start löschen wir Backup-Files (`config.json.bak*`,
  *     `config.json.sc-backup`), die frühere Versionen hinterlassen haben.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "node:fs";
 import { homedir, userInfo, platform } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -69,15 +69,21 @@ function _lockdown(target) {
   if (platform() !== "win32") return;
   try {
     const user = userInfo().username;
+    // (OI)(CI) gilt NUR für Ordner. Auf einer Datei erzeugen Vererbungsflags
+    // Inherit-Only-ACEs, die für die Datei selbst nicht greifen — Ergebnis
+    // wäre eine für ALLE (inkl. Besitzer) unlesbare config.json, obwohl
+    // icacls Exit 0 meldet. (E2E-Befund 2026-07-16: jeder frische
+    // `knowmind login` unter Windows machte die CLI unbrauchbar.)
+    const suffix = statSync(target).isDirectory() ? ":(OI)(CI)F" : ":F";
     // /reset alleine reicht nicht — die geerbten Berechtigungen müssen weg.
     spawnSync("icacls", [target, "/inheritance:r"], { stdio: "ignore" });
-    spawnSync("icacls", [target, "/grant:r", `${user}:(OI)(CI)F`], { stdio: "ignore" });
-    spawnSync("icacls", [target, "/grant:r", "SYSTEM:(OI)(CI)F"], { stdio: "ignore" });
-    spawnSync("icacls", [target, "/grant:r", "Administratoren:(OI)(CI)F"], {
+    spawnSync("icacls", [target, "/grant:r", `${user}${suffix}`], { stdio: "ignore" });
+    spawnSync("icacls", [target, "/grant:r", `SYSTEM${suffix}`], { stdio: "ignore" });
+    spawnSync("icacls", [target, "/grant:r", `Administratoren${suffix}`], {
       stdio: "ignore",
     });
     // EN-Variante als Fallback (icacls akzeptiert beide nur in jeweiliger Locale)
-    spawnSync("icacls", [target, "/grant:r", "Administrators:(OI)(CI)F"], {
+    spawnSync("icacls", [target, "/grant:r", `Administrators${suffix}`], {
       stdio: "ignore",
     });
   } catch {
