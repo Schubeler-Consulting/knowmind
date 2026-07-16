@@ -1,5 +1,18 @@
 # Knowmind CLI — Änderungen
 
+## 0.2.0 (2026-07-16)
+
+**Neu: `knowmind status` — sichtbares Lebenszeichen des Gedächtnisses**
+- `knowmind status` zeigt einen kurzen Erreichbarkeits-Report (erreichbar,
+  Anzahl Erinnerungen und Beziehungen, Antwortzeit).
+- `knowmind status --line` gibt eine einzeilige Statusline für Ihr KI-Werkzeug
+  aus: ruhig grün, wenn erreichbar; grünes Flackern wie eine Festplatten-LED,
+  während knowmind arbeitet; rot bei Ausfall (mit Selbst-Erholung). Die Anzeige
+  blockiert nie — Erreichbarkeit und Zahl werden gecacht, im Hintergrund
+  aufgefrischt.
+- `knowmind init --client claude-code` bindet die Statusline automatisch ein.
+  Eine bereits vorhandene eigene Statusline bleibt unangetastet.
+
 ## 0.1.29 (2026-07-16)
 
 - Verbesserungen der Stabilität und allgemeine Fehlerbehebungen.

@@ -154,9 +154,18 @@ function autoRecallHookSource() {
 // npx-Kaltstart; und es gibt KEINE Command-Injection, weil die Nutzer-Frage als
 // JSON-Body und nicht als Shell-Argument übergeben wird. Fail-open: jeder
 // Fehler / fehlendes Token -> exit 0 ohne Ausgabe, blockiert nie.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
+// Stempelt den Aktivitäts-Zeitpunkt für die knowmind-Statusline (grüne
+// HDD-LED). Best-effort, darf den Recall nie brechen.
+function markActivity() {
+  try {
+    mkdirSync(join(homedir(), ".knowmind"), { recursive: true });
+    writeFileSync(join(homedir(), ".knowmind", "activity"), String(Date.now()));
+  } catch {}
+}
 
 const TRIVIAL = new Set([
   "ok","okay","go","ja","nein","weiter","stop","danke","thanks","thx",
@@ -245,6 +254,7 @@ async function main() {
 
   const { apiUrl, token } = loadCreds();
   if (!token) return;
+  markActivity();
   const query = prompt.trim().slice(0, 500);
 
   const ctrl = new AbortController();
@@ -492,11 +502,30 @@ function planClaudeCode(cwd) {
     const relCapture = ".claude/hooks/knowmind_capture.mjs";
     const m1 = ensureClaudeHookEntry(settings, "UserPromptSubmit", relRecall);
     const m2 = ensureClaudeHookEntry(settings, "Stop", relCapture);
+    // Statusline: knowmind-Lebenszeichen (grüne HDD-LED). NUR setzen, wenn
+    // keine existiert oder sie bereits auf knowmind zeigt — eine fremde
+    // Statusline des Nutzers wird NIE gekapert.
+    const km = { type: "command", command: "knowmind status --line" };
+    let m3 = false;
+    const existing = settings.statusLine;
+    const isKnowmind =
+      existing && typeof existing.command === "string" && existing.command.includes("knowmind status");
+    if (!existing) {
+      settings.statusLine = km;
+      m3 = true;
+    } else if (isKnowmind && existing.command !== km.command) {
+      settings.statusLine = km;
+      m3 = true;
+    }
     actions.push({
-      label: "Claude-Code settings.json (Hook-Registrierung)",
+      label: "Claude-Code settings.json (Hooks + Statusline)",
       path: settingsPath,
-      action: m1 || m2 ? (existsSync(settingsPath) ? "patch" : "create") : "unchanged",
+      action: m1 || m2 || m3 ? (existsSync(settingsPath) ? "patch" : "create") : "unchanged",
       content: JSON.stringify(settings, null, 2) + "\n",
+      _note:
+        existing && !isKnowmind
+          ? "Eigene Statusline erkannt — nicht überschrieben. Manuell einbinden: knowmind status --line"
+          : undefined,
     });
   }
 

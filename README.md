@@ -40,8 +40,15 @@ knowmind search "Wo läuft die OKR-App?"
 knowmind upload notizen.md --title "Meeting Notizen 2026-05-12"
 knowmind stats
 knowmind health
+knowmind status                     Lebenszeichen des Gedächtnisses (Report)
+knowmind status --line              Einzeilige Statusline für Ihr KI-Werkzeug
 knowmind config
 ```
+
+Die Statusline (`knowmind status --line`) zeigt knowmind als grüne Lampe direkt in Ihrem
+KI-Werkzeug: ruhig grün, wenn erreichbar, grünes Flackern wie eine Festplatten-LED, während
+knowmind arbeitet, rot bei Ausfall. `knowmind init --client claude-code` bindet sie
+automatisch ein (eine bereits vorhandene eigene Statusline bleibt unangetastet).
 
 ## Automatische Pflege einrichten (`knowmind init`)
 

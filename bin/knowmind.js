@@ -25,6 +25,7 @@ import { runStdioServer } from "../src/mcp-stdio.js";
 import { syncDirectory } from "../src/sync.js";
 import { runInit } from "../src/init.js";
 import { runInstall } from "../src/install.js";
+import { renderLine, renderFull, probe } from "../src/status.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -65,6 +66,11 @@ Befehle:
                        Content-Hash, Manifest in <dir>/.knowmind-manifest.json.
   knowmind stats       Memory- und Edge-Counter des Tenants
   knowmind health      Health-Check der Plattform
+  knowmind status [--line]
+                       Lebenszeichen des Gedächtnisses. Ohne Flag: Report.
+                       --line: einzeilige Statusline (grüne HDD-LED, flackert
+                       bei Aktivität, rot bei Ausfall) — für die Statusline
+                       eines KI-Werkzeugs, z. B. Claude Code.
   knowmind mcp         Stdio-MCP-Server für lokale AI-Clients
   knowmind install <ide> [--project] [--print] [--token T] [--api URL]
                        knowmind als MCP-Server in eine IDE eintragen
@@ -233,6 +239,21 @@ async function runConfig() {
   console.log(`Token:   ${c.token ? c.token.slice(0, 12) + "…" : "(keiner)"}`);
 }
 
+async function runStatus() {
+  // --probe: interner Hintergrund-Refresh der Status-Caches (nicht blockierend
+  // für die Statusline). --line: einzeilige, gefärbte Ausgabe für die Statusline
+  // eines KI-Werkzeugs. Ohne Flag: menschenlesbarer Mehrzeilen-Report.
+  if (args.includes("--probe")) {
+    await probe();
+    return;
+  }
+  if (args.includes("--line")) {
+    process.stdout.write(renderLine());
+    return;
+  }
+  console.log(await renderFull());
+}
+
 async function runInitCmd() {
   const client = parseFlag("--client", "auto");
   const dryRun = args.includes("--dry-run");
@@ -293,6 +314,9 @@ try {
       break;
     case "health":
       await runHealth();
+      break;
+    case "status":
+      await runStatus();
       break;
     case "mcp":
       await runStdioServer();
