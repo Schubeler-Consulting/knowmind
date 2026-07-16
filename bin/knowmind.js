@@ -248,7 +248,23 @@ async function runStatus() {
     return;
   }
   if (args.includes("--line")) {
-    process.stdout.write(renderLine());
+    // Claude Code reicht der Statusline ein JSON per stdin (u. a. session_id).
+    // Non-blocking mit kurzem Timeout lesen — bei manuellem Aufruf ohne stdin
+    // darf nichts hängen. session_id ergibt den Sitzungs-Recall-Zähler.
+    let sessionId = "";
+    try {
+      const raw = await Promise.race([
+        readStdin(),
+        new Promise((r) => setTimeout(() => r(""), 80)),
+      ]);
+      if (raw && raw.trim().startsWith("{")) {
+        const d = JSON.parse(raw);
+        sessionId = d.session_id || d.sessionId || "";
+      }
+    } catch {
+      /* kein/kaputtes stdin — ohne Session weiter */
+    }
+    process.stdout.write(renderLine(sessionId));
     return;
   }
   console.log(await renderFull());

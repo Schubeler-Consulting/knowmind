@@ -40,6 +40,15 @@ const brightGreen = (s) => c("92", s);
 const dimGreen = (s) => c("2;32", s);
 const red = (s) => c("31", s);
 const dim = (s) => c("2", s);
+const kmBlue = (s) => c("38;5;111", s); // ≈ knowmind-Blau #6ea8ff (Session-Akzent)
+
+/** Abgerufene Erinnerungen in DIESER Claude-Code-Session (null wenn keine). */
+function sessionRecalls(sessionId) {
+  if (!sessionId) return null;
+  const safe = String(sessionId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  const data = readJson(join(KM_DIR, "sessions", safe + ".json"));
+  return data && data.memories > 0 ? data.memories : null;
+}
 
 /**
  * Grüne Festplatten-LED: bei Aktivität flackert das ●-Zeichen unregelmäßig
@@ -168,12 +177,14 @@ function hhmm(ts) {
   }
 }
 
-/** Einzeilige Statusline-Ausgabe. Blinkt bei Aktivität, erholt sich selbst. */
-export function renderLine() {
+/** Einzeilige Statusline-Ausgabe. Flackert bei Aktivität, erholt sich selbst.
+ *  sessionId (optional): zeigt „N abgerufen" für die laufende Claude-Code-Sitzung. */
+export function renderLine(sessionId) {
   if (!loadConfig().token && !process.env.KNOWMIND_TOKEN) {
     return dim("○ knowmind · nicht angemeldet");
   }
   const h = healthState();
+  const sep = " " + dim("·") + " ";
 
   if (h.ok === false) {
     const since = h.downSince ? ` (seit ${hhmm(h.downSince)})` : "";
@@ -182,13 +193,20 @@ export function renderLine() {
   if (h.ok == null) {
     return `${dimGreen("●")} ${dim("knowmind · prüfe …")}`;
   }
+  // Session-Zähler = Lebenszeichen dieser Sitzung (knowmind-Blau, auffällig).
+  const sess = sessionRecalls(sessionId);
+  const sessTxt = sess ? kmBlue(`${fmtCount(sess)} abgerufen`) : null;
+
   // erreichbar: bei Aktivität grünes HDD-Flackern, sonst ruhig leuchtend grün
   if (activityAgeMs() <= ACTIVE_MS) {
-    return `${flickerLed()} ${dim("knowmind · arbeitet")}`;
+    return `${flickerLed()} ${dim("knowmind arbeitet")}` + (sessTxt ? sep + sessTxt : "");
   }
-  const cnt = readJson(COUNT_CACHE);
-  const tail = cnt?.count != null ? ` · ${fmtCount(cnt.count)} Erinnerungen` : "";
-  return `${green("●")} ${dim("knowmind" + tail)}`;
+  let tail = sessTxt;
+  if (!tail) {
+    const cnt = readJson(COUNT_CACHE);
+    tail = cnt?.count != null ? dim(`${fmtCount(cnt.count)} gespeichert`) : null;
+  }
+  return `${green("●")} ${dim("knowmind")}` + (tail ? sep + tail : "");
 }
 
 /** Mehrzeilige, menschenlesbare Ausgabe (`knowmind status`). */

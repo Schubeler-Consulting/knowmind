@@ -1,5 +1,15 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.0 (2026-07-16)
+
+**`knowmind status`: Sitzungs-Zähler + sichtbares Flackern**
+- Die Statusline zeigt jetzt, wie viele Erinnerungen in der laufenden Sitzung
+  abgerufen wurden — als eigenes, farblich hervorgehobenes Lebenszeichen.
+- Die grüne LED flackert bei Aktivität jetzt sichtbar: `knowmind init --client
+  claude-code` richtet die Statusleiste mit periodischem Neuzeichnen ein
+  (Claude Code ab v2.1.97). Ohne das rendert Claude Code die Statusleiste nur
+  bei Ereignissen, sodass eine Animation nicht sichtbar würde.
+
 ## 0.2.0 (2026-07-16)
 
 **Neu: `knowmind status` — sichtbares Lebenszeichen des Gedächtnisses**

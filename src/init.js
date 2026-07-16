@@ -154,7 +154,7 @@ function autoRecallHookSource() {
 // npx-Kaltstart; und es gibt KEINE Command-Injection, weil die Nutzer-Frage als
 // JSON-Body und nicht als Shell-Argument übergeben wird. Fail-open: jeder
 // Fehler / fehlendes Token -> exit 0 ohne Ausgabe, blockiert nie.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -164,6 +164,30 @@ function markActivity() {
   try {
     mkdirSync(join(homedir(), ".knowmind"), { recursive: true });
     writeFileSync(join(homedir(), ".knowmind", "activity"), String(Date.now()));
+  } catch {}
+}
+
+// Zählt pro Claude-Code-Session die abgerufenen Erinnerungen. Die Statusline
+// zeigt „N abgerufen" für die laufende Sitzung. Best-effort.
+function bumpSessionRecalls(sessionId, hits) {
+  if (!sessionId || !(hits > 0)) return;
+  try {
+    const d = join(homedir(), ".knowmind", "sessions");
+    mkdirSync(d, { recursive: true });
+    const now = Date.now();
+    for (const fn of readdirSync(d)) {
+      try {
+        if (now - statSync(join(d, fn)).mtimeMs > 86400000) unlinkSync(join(d, fn));
+      } catch {}
+    }
+    const safe = String(sessionId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+    const p = join(d, safe + ".json");
+    let cur = {};
+    try { cur = JSON.parse(readFileSync(p, "utf-8")); } catch {}
+    cur.recalls = (cur.recalls || 0) + 1;
+    cur.memories = (cur.memories || 0) + hits;
+    cur.updated = now;
+    writeFileSync(p, JSON.stringify(cur));
   } catch {}
 }
 
@@ -246,9 +270,11 @@ async function main() {
   process.stdin.setEncoding("utf-8");
   for await (const c of process.stdin) raw += c;
   let prompt = "";
+  let sessionId = "";
   try {
     const data = raw ? JSON.parse(raw) : {};
     prompt = data.prompt || data.user_prompt || data.user_message || "";
+    sessionId = data.session_id || data.sessionId || "";
   } catch { return; }
   if (!shouldRecall(prompt)) return;
 
@@ -279,6 +305,7 @@ async function main() {
 
   const hits = formatHits(rpc);
   if (!hits) return;
+  bumpSessionRecalls(sessionId, (hits.match(/^• /gm) || []).length);
 
   process.stdout.write(
     "═════════ knowmind RECALL (auto) ═════════\\n" +
@@ -505,7 +532,10 @@ function planClaudeCode(cwd) {
     // Statusline: knowmind-Lebenszeichen (grüne HDD-LED). NUR setzen, wenn
     // keine existiert oder sie bereits auf knowmind zeigt — eine fremde
     // Statusline des Nutzers wird NIE gekapert.
-    const km = { type: "command", command: "knowmind status --line" };
+    // refreshInterval: Claude Code rendert die Statusline sonst nur bei
+    // Ereignissen — damit die grüne LED bei Aktivität sichtbar flackert, muss
+    // sie periodisch neu gezeichnet werden (Claude Code >= 2.1.97, Min. 500 ms).
+    const km = { type: "command", command: "knowmind status --line", refreshInterval: 500 };
     let m3 = false;
     const existing = settings.statusLine;
     const isKnowmind =
@@ -513,7 +543,7 @@ function planClaudeCode(cwd) {
     if (!existing) {
       settings.statusLine = km;
       m3 = true;
-    } else if (isKnowmind && existing.command !== km.command) {
+    } else if (isKnowmind && (existing.command !== km.command || existing.refreshInterval !== 500)) {
       settings.statusLine = km;
       m3 = true;
     }
