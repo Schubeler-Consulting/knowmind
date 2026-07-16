@@ -27,6 +27,29 @@ async function rpc(method, params, options = {}) {
   return data.result;
 }
 
+/**
+ * Tool-Text tolerant parsen: Server-Versionen vom 16.07.2026 stellten dem
+ * JSON zeitweise einen Präsenz-Marker („● knowmind · N Treffer") voran.
+ * Erst direkt parsen, sonst ab der ersten öffnenden Klammer.
+ */
+function parseToolJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    for (const ch of ["{", "["]) {
+      const i = text.indexOf(ch);
+      if (i >= 0) {
+        try {
+          return JSON.parse(text.slice(i));
+        } catch {
+          /* nächster Kandidat */
+        }
+      }
+    }
+    throw err;
+  }
+}
+
 export async function recall(query, { k = 5, hops = 2 } = {}) {
   const res = await rpc("tools/call", {
     name: "knowmind_recall",
@@ -35,17 +58,17 @@ export async function recall(query, { k = 5, hops = 2 } = {}) {
   // MCP-Antwort: { content: [{ type: "text", text: "<JSON>" }] }
   const text = res.content?.[0]?.text;
   if (!text) return null;
-  return JSON.parse(text);
+  return parseToolJson(text);
 }
 
 export async function stats() {
   const res = await rpc("tools/call", { name: "knowmind_stats", arguments: {} });
-  return JSON.parse(res.content?.[0]?.text ?? "{}");
+  return parseToolJson(res.content?.[0]?.text ?? "{}");
 }
 
 export async function health() {
   const res = await rpc("tools/call", { name: "knowmind_health", arguments: {} });
-  return JSON.parse(res.content?.[0]?.text ?? "{}");
+  return parseToolJson(res.content?.[0]?.text ?? "{}");
 }
 
 /**

@@ -1,5 +1,13 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.28 (2026-07-16)
+
+**`search`/`stats`/`health` tolerant gegen Präfixe im Tool-Text**
+- Server-Versionen vom 16.07. stellten dem Recall-JSON zeitweise einen
+  Präsenz-Marker voran; `knowmind search` stürzte mit „Unexpected token ●"
+  ab. Der Client parst Tool-Antworten jetzt tolerant (ab der ersten
+  öffnenden Klammer). Serverseitig wurde der Marker ebenfalls entfernt.
+
 ## 0.1.27 (2026-07-16)
 
 **Windows: `login` erzeugte eine unlesbare config.json (P0)**
