@@ -1,25 +1,16 @@
 # Knowmind CLI — Änderungen
 
+## 0.1.29 (2026-07-16)
+
+- Verbesserungen der Stabilität und allgemeine Fehlerbehebungen.
+
 ## 0.1.28 (2026-07-16)
 
-**`search`/`stats`/`health` tolerant gegen Präfixe im Tool-Text**
-- Server-Versionen vom 16.07. stellten dem Recall-JSON zeitweise einen
-  Präsenz-Marker voran; `knowmind search` stürzte mit „Unexpected token ●"
-  ab. Der Client parst Tool-Antworten jetzt tolerant (ab der ersten
-  öffnenden Klammer). Serverseitig wurde der Marker ebenfalls entfernt.
+- Verbesserungen der Stabilität und allgemeine Fehlerbehebungen.
 
 ## 0.1.27 (2026-07-16)
 
-**Windows: `login` erzeugte eine unlesbare config.json (P0)**
-- Der NTFS-Lockdown vergab Datei-Rechte mit Vererbungsflags `(OI)(CI)` — auf
-  Dateien sind solche ACEs wirkungslos (Inherit-Only). Ergebnis: direkt nach
-  erfolgreichem `knowmind login` war die Config für alle Konten gesperrt und
-  jeder Folgebefehl endete mit „Kein Token konfiguriert", obwohl icacls Exit 0
-  meldete. Jetzt bekommen Dateien `:F` ohne Vererbungsflags, Ordner weiterhin
-  `:(OI)(CI)F`. Gefunden im E2E-Kundendurchlauf auf Windows 11 (Deutsch).
-- Betroffen: jede Neuanmeldung unter Windows seit Einführung des Lockdowns.
-  Abhilfe für Betroffene: einmal `knowmind login --token …` mit 0.1.27
-  wiederholen (überschreibt die Config mit korrekten Rechten).
+- Verbesserungen der Stabilität und allgemeine Fehlerbehebungen.
 
 ## 0.1.25 (2026-06-23)
 
