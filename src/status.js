@@ -144,6 +144,7 @@ function spawnProbe() {
     const child = spawn(process.execPath, [self, "status", "--probe"], {
       detached: true,
       stdio: "ignore",
+      windowsHide: true,
     });
     child.unref();
   } catch {

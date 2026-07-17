@@ -76,15 +76,17 @@ function _lockdown(target) {
     // `knowmind login` unter Windows machte die CLI unbrauchbar.)
     const suffix = statSync(target).isDirectory() ? ":(OI)(CI)F" : ":F";
     // /reset alleine reicht nicht — die geerbten Berechtigungen müssen weg.
-    spawnSync("icacls", [target, "/inheritance:r"], { stdio: "ignore" });
-    spawnSync("icacls", [target, "/grant:r", `${user}${suffix}`], { stdio: "ignore" });
-    spawnSync("icacls", [target, "/grant:r", `SYSTEM${suffix}`], { stdio: "ignore" });
+    spawnSync("icacls", [target, "/inheritance:r"], { stdio: "ignore", windowsHide: true });
+    spawnSync("icacls", [target, "/grant:r", `${user}${suffix}`], { stdio: "ignore", windowsHide: true });
+    spawnSync("icacls", [target, "/grant:r", `SYSTEM${suffix}`], { stdio: "ignore", windowsHide: true });
     spawnSync("icacls", [target, "/grant:r", `Administratoren${suffix}`], {
       stdio: "ignore",
+      windowsHide: true,
     });
     // EN-Variante als Fallback (icacls akzeptiert beide nur in jeweiliger Locale)
     spawnSync("icacls", [target, "/grant:r", `Administrators${suffix}`], {
       stdio: "ignore",
+      windowsHide: true,
     });
   } catch {
     // best effort — wenn icacls fehlt, fallen wir auf Standard-NTFS zurück
