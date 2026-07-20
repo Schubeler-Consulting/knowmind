@@ -38,11 +38,13 @@ jobs:
         with:
           node-version: "20"
 
-      # Erst-Prüfung (nicht fatal): erfasst den Zustand, setzt registry_stale.
+      # Erst-Prüfung: erfasst den Zustand und setzt registry_stale. Bewusst
+      # nicht-fatal (`|| true`) — Drift IST hier der Normalfall (z. B. direkt nach
+      # einem npm-Publish) und soll geheilt, nicht als roter Lauf gemeldet werden.
+      # Die Endkontrolle unten ist der echte Gate.
       - name: Konsistenz prüfen
         id: check
-        continue-on-error: true
-        run: node scripts/check-distribution.mjs
+        run: node scripts/check-distribution.mjs || true
 
       # server.json auf npm-latest ziehen und committen, falls es hinterherhängt.
       - name: server.json auf npm-latest syncen
