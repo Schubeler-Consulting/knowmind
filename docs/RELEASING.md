@@ -21,20 +21,35 @@
 
 ## Release-Schritte (neue Version X.Y.Z)
 
+**Der EINZIGE manuelle Schritt mit menschlichem Eingriff ist der npm-Publish (2FA).** Alles Nachgelagerte
+(server.json, offizielle Registry, Aggregatoren) hält der Automatismus selbst auf Stand — siehe unten.
+
 1. **Code-Quelle:** `Programmieren/knowmind-cli/` (npm-Source). Repo-Spiegel: `Programmieren/knowmind/`.
 2. `package.json`: `version` → X.Y.Z (mcpName unverändert lassen). CHANGELOG-Eintrag schreiben.
-3. **npm publish:** `cd knowmind-cli && npm publish --access public` (Login `schuebeler_consulting`; bei 2FA `--otp=<code>`).
-4. `server.json`: `version` (oben + `packages[].version`) → X.Y.Z. `mcp-publisher validate` (CLI) → muss „valid" sein.
-   - Achtung: `description` ≤ 100 Zeichen (Registry-Limit).
-5. Repo-Spiegel synchronisieren (README/CHANGELOG/package.json/server.json kopieren), commit + push.
-6. **Offizielle Registry:** automatisch über GitHub-Actions-OIDC — `.github/workflows/publish-mcp-registry.yml`
-   per Tag `v*` ODER `gh workflow run publish-mcp-registry.yml`. Kein Device-Code, kein Secret nötig
-   (die Org-OIDC-Identität autorisiert `io.github.Schubeler-Consulting/*`).
-7. **Hermes-Pin** angleichen: `knowmind-hermes/hermes-catalog/knowmind/manifest.yaml` → `knowmind@X.Y.Z` (args + version).
-8. Verifizieren:
-   - `npm view knowmind version` = X.Y.Z
-   - `npx -y knowmind@X.Y.Z mcp` → `serverInfo.version` = X.Y.Z
-   - `curl "https://registry.modelcontextprotocol.io/v0/servers?search=knowmind"` → Eintrag mit X.Y.Z, status active
+3. **npm publish:** `npm publish --access public` (Login `schuebeler_consulting`; bei 2FA `--otp=<code>`).
+   Das ist der einzige Schritt, der 2FA braucht.
+4. Fertig. Der Rest passiert automatisch (spätestens beim nächsten täglichen Wächter-Lauf, sofort per
+   `gh workflow run distribution-consistency.yml`):
+   - `scripts/sync-server-json.mjs` setzt `server.json` auf npm-latest (kein Handpflegen mehr).
+   - der OIDC-Workflow publiziert in die offizielle MCP-Registry.
+   - `scripts/check-distribution.mjs` verifiziert alle Kanäle; bei Drift wird der Lauf rot (GitHub mailt).
+5. **Hermes-Pin** angleichen (noch manuell): `knowmind-hermes/hermes-catalog/knowmind/manifest.yaml`
+   → `knowmind@X.Y.Z` (args + version).
+6. Verifizieren (macht auch der Wächter): `npm view knowmind version` = X.Y.Z ·
+   `npx -y knowmind@X.Y.Z mcp` → `serverInfo.version` = X.Y.Z ·
+   `curl "https://registry.modelcontextprotocol.io/v0/servers?search=knowmind"` → X.Y.Z, status active, isLatest.
+
+## Strukturelle Absicherung (Drift-Schutz)
+
+- **`scripts/check-distribution.mjs`** — Wächter: vergleicht package.json ↔ npm-latest ↔ server.json ↔
+  MCP-Registry. Exit 1 bei Drift (package.json vor npm = Hinweis, kein Fehler). Lokal `node scripts/check-distribution.mjs`.
+- **`scripts/sync-server-json.mjs`** — setzt server.json auf npm-latest (Anker = die veröffentlichte Version,
+  NICHT package.json, weil die Registry npm-Existenz validiert).
+- **`.github/workflows/distribution-consistency.yml`** — täglicher Cron + bei jedem Push auf package.json/
+  server.json: prüft, heilt den Registry-Teil selbst (server.json syncen + committen + publizieren), meldet Rest.
+- **`.github/workflows/publish-mcp-registry.yml`** — zieht server.json vor jedem Publish auf npm-latest.
+
+Damit ist die frühere Drift (npm 0.3.0, Registry 0.1.15, server.json 0.1.26 gleichzeitig) strukturell ausgeschlossen.
 
 ## Wo knowmind gelistet ist / wird
 

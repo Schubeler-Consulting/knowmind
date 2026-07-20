@@ -1,0 +1,72 @@
+name: Distribution Consistency
+
+# Hält knowmind über alle Kanäle auf Stand und meldet Drift.
+# Wahrheitskette: package.json -> npm-latest -> server.json -> MCP-Registry -> Aggregatoren.
+#
+# - Prüft täglich (und bei jedem relevanten Push) die Konsistenz.
+# - Heilt den Registry-Teil SELBST: server.json auf npm-latest syncen, committen,
+#   in die offizielle Registry publizieren (OIDC, kein Secret).
+# - Was CI NICHT heilen kann: den npm-Publish selbst (manuell, 2FA). Steht
+#   package.json vor npm-latest, ist das ein Hinweis, kein Fehler.
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # täglich 06:17 UTC
+  workflow_dispatch: {}
+  push:
+    branches: [master]
+    paths:
+      - "package.json"
+      - "server.json"
+      - "scripts/check-distribution.mjs"
+      - "scripts/sync-server-json.mjs"
+
+concurrency:
+  group: distribution-consistency
+  cancel-in-progress: false
+
+permissions:
+  contents: write # server.json-Auto-Commit
+  id-token: write # mcp-publisher OIDC
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Erst-Prüfung (nicht fatal): erfasst den Zustand, setzt registry_stale.
+      - name: Konsistenz prüfen
+        id: check
+        continue-on-error: true
+        run: node scripts/check-distribution.mjs
+
+      # server.json auf npm-latest ziehen und committen, falls es hinterherhängt.
+      - name: server.json auf npm-latest syncen
+        if: steps.check.outputs.registry_stale == '1'
+        run: |
+          node scripts/sync-server-json.mjs
+          if ! git diff --quiet server.json; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add server.json
+            git commit -m "chore(registry): server.json auf npm-latest ${{ steps.check.outputs.npm_latest }} [skip ci]"
+            git push
+          fi
+
+      # Offizielle MCP-Registry aktualisieren (nur bei Drift).
+      - name: In MCP-Registry publizieren
+        if: steps.check.outputs.registry_stale == '1'
+        run: |
+          curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher validate
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
+      # End-Prüfung: MUSS grün sein, sonst roter Lauf -> GitHub mailt den Maintainer.
+      # (package.json vor npm = Hinweis, kein Fehler -> Lauf bleibt grün.)
+      - name: Endkontrolle
+        run: node scripts/check-distribution.mjs

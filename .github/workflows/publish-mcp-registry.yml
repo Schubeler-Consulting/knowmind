@@ -19,6 +19,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: server.json auf npm-latest ziehen
+        # Verhindert Drift: die Registry bekommt immer die tatsächlich auf npm
+        # veröffentlichte Version, ohne dass server.json von Hand gepflegt wird.
+        run: node scripts/sync-server-json.mjs
       - name: mcp-publisher holen
         run: |
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
