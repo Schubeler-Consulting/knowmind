@@ -1,5 +1,11 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.1 (2026-07-17)
+
+- Unter Windows laufen alle Hintergrundaufrufe (Statusline-Ping, Config-Schutz)
+  jetzt ohne aufblitzende Konsolenfenster.
+- Verbesserungen der Stabilität und allgemeine Fehlerbehebungen.
+
 ## 0.3.0 (2026-07-16)
 
 **`knowmind status`: Sitzungs-Zähler + sichtbares Flackern**

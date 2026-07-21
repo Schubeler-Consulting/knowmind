@@ -35,12 +35,16 @@ if (!/^\d+\.\d+\.\d+/.test(ziel)) {
 
 const pfad = new URL("../server.json", import.meta.url);
 const sj = JSON.parse(readFileSync(pfad, "utf8"));
+const glamaPfad = new URL("../glama.json", import.meta.url);
+const glama = JSON.parse(readFileSync(glamaPfad, "utf8"));
 
 const abweichungen = [];
 if (sj.version !== ziel) abweichungen.push(`version ${sj.version} -> ${ziel}`);
 for (const p of sj.packages ?? []) {
   if (p.version !== ziel) abweichungen.push(`packages[${p.identifier}].version ${p.version} -> ${ziel}`);
 }
+// glama.json (Glama-Listing) hängt an derselben Wahrheit (npm-latest).
+if (glama.version !== ziel) abweichungen.push(`glama.json version ${glama.version} -> ${ziel}`);
 
 // Identitäts-Invariante: server.json.name muss dem npm-mcpName entsprechen,
 // sonst scheitert die Ownership-Validierung der Registry.
@@ -51,16 +55,20 @@ if (pkgJson.mcpName && pkgJson.mcpName !== sj.name) {
 }
 
 if (!abweichungen.length) {
-  console.log(`server.json bereits auf ${ziel} — nichts zu tun.`);
+  console.log(`server.json + glama.json bereits auf ${ziel} — nichts zu tun.`);
   process.exit(0);
 }
 
 if (checkOnly) {
-  console.error(`server.json weicht ab:\n  ${abweichungen.join("\n  ")}`);
+  console.error(`Manifeste weichen ab:\n  ${abweichungen.join("\n  ")}`);
   process.exit(1);
 }
 
 sj.version = ziel;
 for (const p of sj.packages ?? []) p.version = ziel;
 writeFileSync(pfad, JSON.stringify(sj, null, 2) + "\n");
-console.log(`server.json -> ${ziel} gesetzt:\n  ${abweichungen.join("\n  ")}`);
+if (glama.version !== ziel) {
+  glama.version = ziel;
+  writeFileSync(glamaPfad, JSON.stringify(glama, null, 2) + "\n");
+}
+console.log(`Manifeste -> ${ziel} gesetzt:\n  ${abweichungen.join("\n  ")}`);

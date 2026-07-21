@@ -18,6 +18,7 @@ const REGISTRY = "https://registry.modelcontextprotocol.io/v0/servers?search=kno
 const root = new URL("../", import.meta.url);
 const pkg = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
 const sj = JSON.parse(readFileSync(new URL("server.json", root), "utf8"));
+const glama = JSON.parse(readFileSync(new URL("glama.json", root), "utf8"));
 
 // npm-latest per HTTP (kein child_process/Shell — plattformunabhängig).
 async function npmLatest() {
@@ -65,6 +66,11 @@ if (sj.version !== npmV)
 if (regV !== npmV)
   fehler.push(`MCP-Registry (${regV ?? "fehlt"}) != npm-latest (${npmV}) — Registry-Publish nötig`);
 
+// 4b. glama.json zeigt auf die veröffentlichte npm-Version (Glama-Listing;
+// hing bis 2026-07-21 unbemerkt bei 0.1.25, weil hier nicht geprüft).
+if (glama.version !== npmV)
+  fehler.push(`glama.json (${glama.version}) != npm-latest (${npmV})`);
+
 // 5. package.json voraus = unveröffentlichter Bump (Warnung, kein Fehler)
 if (cmp(pkg.version, npmV) > 0)
   warnung.push(`package.json (${pkg.version}) > npm-latest (${npmV}) — npm publish steht aus (manuell, 2FA)`);
@@ -75,6 +81,7 @@ console.log(`Distributions-Stand knowmind:`);
 console.log(`  package.json : ${pkg.version}`);
 console.log(`  npm-latest   : ${npmV}`);
 console.log(`  server.json  : ${sj.version}`);
+console.log(`  glama.json   : ${glama.version}`);
 console.log(`  MCP-Registry : ${regV ?? "—"}`);
 console.log(`  mcpName/name : ${pkg.mcpName ?? "—"} / ${sj.name}`);
 
