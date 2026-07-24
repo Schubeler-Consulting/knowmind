@@ -4,7 +4,7 @@
     "WhoSoEverM8"
   ],
   "version": "0.3.1",
-  "description": "Das Agentengehirn aus Deutschland: persistentes Gedächtnis für KI-Agenten (Recall, Wissensgraph, bi-temporale Fakten). EU-Hosting, BYOK.",
+  "description": "Persistent memory for AI agents, hosted in Germany: hybrid recall, knowledge graph and bi-temporal facts over MCP. EU hosting (GDPR), BYOK.",
   "homepage": "https://knowmind.de",
   "repository": {
     "url": "https://github.com/Schubeler-Consulting/knowmind"
