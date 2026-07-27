@@ -1,11 +1,16 @@
 # knowmind
 
-**Das Agentengehirn aus Deutschland.** Langzeitgedächtnis und Wissensgraph für Ihre KI —
-CLI + MCP-Server. Inhalte und Server in Deutschland (Hetzner-Rechenzentrum).
+**Ihr KI-Assistent kennt Ihr Unternehmen nicht.** Er beginnt jedes Gespräch bei null, und Sie
+erklären ihm zum wiederholten Mal dieselben Zusammenhänge. knowmind ist das Gedächtnis darunter:
+Was Sie einmal ablegen, steht in Claude, ChatGPT, Cursor und Ihren eigenen Anwendungen zur
+Verfügung. Betrieben in Deutschland, im Rechenzentrum Nürnberg.
+
+**Der Privat-Tarif kostet dauerhaft nichts und verlangt keine Zahlungsdaten.** Schnittstelle,
+Kommandozeile und MCP-Server sind in jedem Tarif enthalten, auch dort.
 
 <!-- mcp-name: io.github.Schubeler-Consulting/knowmind -->
 
-[![npm](https://img.shields.io/npm/v/knowmind)](https://www.npmjs.com/package/knowmind) · Apache-2.0 · [knowmind.de](https://knowmind.de)
+[![npm](https://img.shields.io/npm/v/knowmind)](https://www.npmjs.com/package/knowmind) · [knowmind.de](https://knowmind.de) · [Discord](https://discord.gg/nRguXx5hDQ) · dieses Paket unter Apache-2.0
 
 ## Installation
 
@@ -15,9 +20,10 @@ npm install -g knowmind
 
 Oder ohne Installation direkt als MCP-Server: `npx -y knowmind mcp`
 
-## Setup
+## Einrichtung
 
-1. Token auf knowmind.de anlegen: Dashboard → API-Tokens
+1. Kostenloses Konto auf [knowmind.de](https://knowmind.de) anlegen und dort einen Zugangsschlüssel
+   erzeugen: Dashboard → API-Tokens
 2. Lokal speichern:
 
 ```
@@ -67,7 +73,7 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 **Was eingerichtet wird:**
 
 - **Claude Code** — projektlokale Hooks in `.claude/`:
-  - *UserPromptSubmit* → ruft vor jeder echten Frage `knowmind_recall` auf und reicht die
+  - *UserPromptSubmit* → ruft vor jeder inhaltlichen Frage `knowmind_recall` auf und reicht die
     Top-Treffer als Kontext nach (Memory-First, automatisch).
   - *Stop* → erinnert die KI daran, mit `knowmind_store_memory` zu sichern, wenn die Runde
     Sicherungswürdiges enthielt (Deploy/Commit, neue Regel, Entscheidung) und noch nichts
@@ -166,7 +172,7 @@ CLI-Befehl läuft über die REST-Schnittstelle (`/api/documents`), nicht über M
 
 ## Daten in Deutschland
 
-knowmind ist das Agentengehirn aus Deutschland: Ihre Inhalte (Memories, Account- und Metadaten) werden
+knowmind wird in Deutschland betrieben: Ihre Inhalte (Memories, Account- und Metadaten) werden
 ausschließlich auf Servern in Deutschland (Hetzner-Rechenzentrum) gespeichert und verlassen Deutschland nicht.
 Auftragsverarbeitung (AVV) nach Art. 28 DSGVO verfügbar: https://knowmind.de/legal/avv
 
