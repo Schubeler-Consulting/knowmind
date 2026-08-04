@@ -81,6 +81,20 @@ const IDES = {
     globalPath: () => appData("Claude", "claude_desktop_config.json"),
     projectPath: null,
   },
+  gemini: {
+    label: "Gemini CLI",
+    family: "mcpServers",
+    secret: "literal-only",
+    globalPath: () => home(".gemini", "settings.json"),
+    projectPath: (cwd) => join(cwd, ".gemini", "settings.json"),
+  },
+  codex: {
+    label: "Codex CLI",
+    family: "toml",
+    secret: "literal-only",
+    globalPath: () => home(".codex", "config.toml"),
+    projectPath: null,
+  },
   "claude-code": {
     label: "Claude Code",
     family: "mcpServers",
@@ -135,6 +149,35 @@ function snippet(ide, opts) {
     };
   }
   return { [ide.family]: { knowmind: entry } };
+}
+
+// ── TOML (Codex CLI) ────────────────────────────────────────────────────────
+// Codex liest ~/.codex/config.toml. Es gibt keinen TOML-Parser als Abhängigkeit
+// und es soll keiner dazukommen — der knowmind-Block wird zeilenbasiert ersetzt:
+// Abschnittskopf [mcp_servers.knowmind] (und Unterabschnitte) samt Folgezeilen
+// bis zum nächsten Abschnittskopf entfernen, dann den frischen Block anhängen.
+function tomlBlock(opts) {
+  const token = tokenRef("literal-only", opts.literalToken);
+  return [
+    "[mcp_servers.knowmind]",
+    `command = "${NPX}"`,
+    `args = [${NPX_ARGS.map((a) => `"${a}"`).join(", ")}]`,
+    "",
+    "[mcp_servers.knowmind.env]",
+    `KNOWMIND_TOKEN = "${token}"`,
+    `KNOWMIND_API_URL = "${opts.apiUrl}"`,
+  ].join("\n");
+}
+
+function mergeToml(text, opts) {
+  // Erst Zeilenenden vereinheitlichen: `.` matcht kein \r, mit CRLF-Dateien
+  // bräche die Abschnitts-Entfernung sonst mitten im Block ab (Test 04.08.).
+  const quelltext = (text || "").replace(/\r\n/g, "\n");
+  // Kopfzeile + alle Folgezeilen, die keinen neuen Abschnitt beginnen.
+  const alt = /(^|\n)\[mcp_servers\.knowmind(\.[^\]]+)?\](?:\n(?!\[).*)*/g;
+  let neu = quelltext.replace(alt, "$1");
+  neu = neu.replace(/\n{3,}/g, "\n\n").trimEnd();
+  return (neu ? neu + "\n\n" : "") + tomlBlock(opts) + "\n";
 }
 
 function readJsonSafe(path) {
@@ -214,8 +257,32 @@ export function runInstall(opts) {
         continue;
       }
       console.log(`# ${ide.label} — Snippet (manuell einfügen):`);
-      console.log(JSON.stringify(snippet(ide, entryOpts), null, 2));
+      console.log(ide.family === "toml" ? tomlBlock(entryOpts) : JSON.stringify(snippet(ide, entryOpts), null, 2));
       console.log("");
+      continue;
+    }
+
+    // TOML-Ziel (Codex): Text mergen statt JSON.
+    if (ide.family === "toml") {
+      const tomlPath = project ? (ide.projectPath && ide.projectPath(cwd)) : ide.globalPath();
+      if (!tomlPath) {
+        console.log(`# ${ide.label}: kein ${project ? "Projekt" : "globaler"}-Dateipfad — Snippet:`);
+        console.log(tomlBlock(entryOpts));
+        continue;
+      }
+      const alterText = existsSync(tomlPath) ? readFileSync(tomlPath, "utf-8") : "";
+      const neuerText = mergeToml(alterText, entryOpts);
+      if (dryRun) {
+        console.log(`# ${ide.label} — DRY RUN → ${tomlPath}`);
+        console.log(neuerText);
+        continue;
+      }
+      mkdirSync(dirname(tomlPath), { recursive: true });
+      writeFileSync(tomlPath, neuerText, "utf-8");
+      console.log(`✓ ${ide.label}: knowmind eingetragen in ${tomlPath}`);
+      if (!literalToken) {
+        console.log(`    → Platzhalter gesetzt: KNOWMIND_TOKEN in ${tomlPath} durch dein Token ersetzen.`);
+      }
       continue;
     }
 
@@ -244,7 +311,9 @@ export function runInstall(opts) {
 
     writeJson(path, merged);
     console.log(`✓ ${ide.label}: knowmind eingetragen in ${path}`);
-    if (ide.secret === "env") {
+    if (literalToken) {
+      console.log(`    → ${ide.label} neu starten — fertig.`);
+    } else if (ide.secret === "env") {
       console.log(`    → setze KNOWMIND_TOKEN in deiner Umgebung (oder nutze --token).`);
     } else if (ide.secret === "literal-only" && !literalToken) {
       console.log(`    → Platzhalter gesetzt: KNOWMIND_TOKEN in ${path} durch dein Token ersetzen.`);

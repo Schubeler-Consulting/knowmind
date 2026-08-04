@@ -74,8 +74,8 @@ Befehle:
   knowmind mcp         Stdio-MCP-Server für lokale AI-Clients
   knowmind install <ide> [--project] [--print] [--token T] [--api URL]
                        knowmind als MCP-Server in eine IDE eintragen
-                       (cursor, vscode, windsurf, antigravity, zed, jetbrains,
-                       claude-code, claude-desktop, all). 'install list' zeigt alle.
+                       (cursor, vscode, windsurf, antigravity, zed, jetbrains, gemini,
+                       codex, claude-code, claude-desktop, all). 'install list' zeigt alle.
 
 ENV-Override:
   KNOWMIND_API_URL     z. B. https://knowmind.de

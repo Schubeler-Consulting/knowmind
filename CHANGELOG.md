@@ -1,5 +1,16 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.2 (2026-08-04)
+
+**`knowmind install`: zwei neue Ziele, ein Befehl richtet alles ein**
+- `knowmind install gemini` trägt knowmind in Googles Gemini CLI ein
+  (`~/.gemini/settings.json`).
+- `knowmind install codex` trägt knowmind in die Codex CLI ein
+  (`~/.codex/config.toml`) — bestehende Einträge und fremde Server bleiben
+  unangetastet, der Befehl ist beliebig wiederholbar.
+- Mit `--token` endet die Ausgabe jetzt mit „<Werkzeug> neu starten — fertig."
+  statt weiterer Hinweise: nach dem Befehl ist nichts mehr zu tun.
+
 ## 0.3.1 (2026-07-17)
 
 - Unter Windows laufen alle Hintergrundaufrufe (Statusline-Ping, Config-Schutz)
