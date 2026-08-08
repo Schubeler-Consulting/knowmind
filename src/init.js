@@ -446,14 +446,79 @@ ${END}
 
 // ─── Claude-settings.json: Hook-Registrierung (idempotent) ───────────
 
-function ensureClaudeHookEntry(settings, eventName, scriptRel) {
+/**
+ * Fensterloser Starter für Windows.
+ *
+ * Gemessen am 08.08.2026: Startet ein Prozess OHNE eigene Konsole ein
+ * Konsolenprogramm, gibt Windows dem Kind ein eigenes Fenster
+ * (`GetConsoleWindow() != 0`). Läuft der KI-Client also nicht im Terminal —
+ * Desktop-Anwendung, IDE-Erweiterung —, blitzt bei JEDEM Hook-Aufruf ein
+ * Fenster auf. Bei mehreren Hooks je Runde wird das unerträglich.
+ *
+ * `node.exe` hat kein fensterloses Gegenstück (kein „nodew.exe"). Deshalb
+ * dieser Umweg: `pythonw.exe` ist ein GUI-Programm und öffnet selbst kein
+ * Fenster; es startet node mit CREATE_NO_WINDOW und reicht die Datenströme
+ * unverändert durch. Der Hook selbst bleibt unverändert in Node — eine
+ * Wahrheit, kein zweiter Pflegezweig.
+ *
+ * Ohne Python auf dem Rechner bleibt es beim direkten node-Aufruf; dann blitzt
+ * es, wie es das vorher auch tat. Das ist ehrlicher als eine halbe Lösung.
+ */
+function windowsStarterSource() {
+  return `# >>> knowmind windows starter >>>
+# Erzeugt von: knowmind init. Startet den Node-Hook ohne Konsolenfenster.
+# Hintergrund: siehe windowsStarterSource() in knowmind/src/init.js.
+import os, subprocess, sys
+
+CREATE_NO_WINDOW = 0x08000000
+skript = os.path.join(os.path.dirname(os.path.abspath(__file__)), sys.argv[1])
+try:
+    fertig = subprocess.run(
+        ["node", skript],
+        input=sys.stdin.buffer.read(),
+        capture_output=True,
+        creationflags=CREATE_NO_WINDOW,
+    )
+    sys.stdout.buffer.write(fertig.stdout)
+    sys.stdout.flush()
+    sys.exit(fertig.returncode)
+except Exception:
+    # Fail-open wie der Hook selbst: nie blockieren.
+    sys.exit(0)
+# <<< knowmind windows starter <<<
+`;
+}
+
+/** Vollständiger Pfad zu pythonw.exe, oder null wenn nicht auffindbar. */
+function findePythonw() {
+  if (platform() !== "win32") return null;
+  const kandidaten = [];
+  const lokal = process.env.LOCALAPPDATA;
+  if (lokal) {
+    for (const v of ["313", "312", "311", "310"]) {
+      kandidaten.push(join(lokal, "Programs", "Python", `Python${v}`, "pythonw.exe"));
+    }
+  }
+  for (const v of ["313", "312", "311", "310"]) {
+    kandidaten.push(join("C:\\", `Python${v}`, "pythonw.exe"));
+  }
+  return kandidaten.find((p) => existsSync(p)) ?? null;
+}
+
+function ensureClaudeHookEntry(settings, eventName, scriptRel, pythonw) {
   // settings.hooks[eventName] ist ein Array von { matcher?, hooks: [{type,command}] }.
   // Wir registrieren genau EINEN knowmind-Eintrag pro Event, marker-erkennbar am command.
-  const cmd = `node "${scriptRel}"`;
+  const skriptName = scriptRel.split(/[\\/]/).pop();
+  const cmd = pythonw
+    ? `"${pythonw}" ".claude/hooks/knowmind_start.py" "${skriptName}"`
+    : `node "${scriptRel}"`;
   settings.hooks = settings.hooks || {};
   const arr = settings.hooks[eventName] || [];
   // Existierenden knowmind-Eintrag finden (command enthält den Skriptnamen).
-  const scriptName = scriptRel.split(/[\\/]/).pop();
+  // Greift für beide Formen: direkter node-Aufruf und Windows-Starter, weil in
+  // beiden der Skriptname vorkommt. So wird ein Eintrag beim Wechsel zwischen
+  // den Formen ersetzt statt verdoppelt.
+  const scriptName = skriptName;
   let mutated = false;
   let present = false;
   for (const group of arr) {
@@ -508,6 +573,20 @@ function planClaudeCode(cwd) {
     _exec: true,
   });
 
+  // 2b) Windows-Starter — nur dort, wo er gebraucht wird und wirken kann.
+  const pythonwPfad = findePythonw();
+  if (pythonwPfad) {
+    const starterPfad = join(hooksDir, "knowmind_start.py");
+    const starterSrc = windowsStarterSource();
+    actions.push({
+      label: "Windows-Starter (Hooks ohne Konsolenfenster)",
+      path: starterPfad,
+      ...writeOwnFile(starterPfad, starterSrc, ">>> knowmind windows starter"),
+      content: starterSrc,
+      _own: true,
+    });
+  }
+
   // 3) settings.json — Hooks registrieren
   let settings = {};
   if (existsSync(settingsPath)) {
@@ -527,8 +606,9 @@ function planClaudeCode(cwd) {
   } else {
     const relRecall = ".claude/hooks/knowmind_recall.mjs";
     const relCapture = ".claude/hooks/knowmind_capture.mjs";
-    const m1 = ensureClaudeHookEntry(settings, "UserPromptSubmit", relRecall);
-    const m2 = ensureClaudeHookEntry(settings, "Stop", relCapture);
+    const pythonw = findePythonw();
+    const m1 = ensureClaudeHookEntry(settings, "UserPromptSubmit", relRecall, pythonw);
+    const m2 = ensureClaudeHookEntry(settings, "Stop", relCapture, pythonw);
     // Statusline: knowmind-Lebenszeichen (grüne HDD-LED). NUR setzen, wenn
     // keine existiert oder sie bereits auf knowmind zeigt — eine fremde
     // Statusline des Nutzers wird NIE gekapert.
