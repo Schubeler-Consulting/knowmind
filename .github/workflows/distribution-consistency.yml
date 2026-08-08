@@ -46,22 +46,27 @@ jobs:
         id: check
         run: node scripts/check-distribution.mjs || true
 
-      # server.json auf npm-latest ziehen und committen, falls es hinterherhängt.
-      - name: server.json auf npm-latest syncen
+      # Manifeste auf npm-latest ziehen und committen, falls sie hinterherhängen.
+      # BEIDE Dateien: sync-server-json.mjs schreibt server.json UND glama.json,
+      # also müssen auch beide in den Commit. Bis 08.08.2026 stand hier nur
+      # `git add server.json` — die geheilte glama.json fiel unter den Tisch und
+      # der Lauf scheiterte anschliessend an seiner eigenen Endkontrolle.
+      - name: Manifeste auf npm-latest syncen
         if: steps.check.outputs.registry_stale == '1'
         run: |
           node scripts/sync-server-json.mjs
-          if ! git diff --quiet server.json; then
+          if ! git diff --quiet server.json glama.json; then
             git config user.name  "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add server.json
-            git commit -m "chore(registry): server.json auf npm-latest ${{ steps.check.outputs.npm_latest }} [skip ci]"
+            git add server.json glama.json
+            git commit -m "chore(registry): Manifeste auf npm-latest ${{ steps.check.outputs.npm_latest }} [skip ci]"
             git push
           fi
 
-      # Offizielle MCP-Registry aktualisieren (nur bei Drift).
+      # Offizielle MCP-Registry aktualisieren — nur wenn sie selbst hinterherhängt.
+      # Eine reine glama.json-Drift braucht keinen Registry-Publish.
       - name: In MCP-Registry publizieren
-        if: steps.check.outputs.registry_stale == '1'
+        if: steps.check.outputs.publish_noetig == '1'
         run: |
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           ./mcp-publisher validate

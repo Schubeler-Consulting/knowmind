@@ -89,12 +89,21 @@ for (const w of warnung) console.log(`  ⚠ ${w}`);
 for (const f of fehler) console.error(`  ✗ ${f}`);
 
 // Maschinen-Flags für den CI-Heil-Schritt (nur wenn in GitHub Actions).
+//
+// `registry_stale` löst BEIDES aus: den Manifest-Sync (server.json + glama.json)
+// und den Registry-Publish. glama.json gehörte bis 08.08.2026 nicht in diese
+// Bedingung — Folge: Der Lauf heilte server.json, liess glama.json auf dem alten
+// Stand und scheiterte danach an der eigenen Endkontrolle. Das wiederholte sich
+// vier Tage lang täglich, ohne dass es jemandem auffiel.
 if (process.env.GITHUB_OUTPUT) {
-  const registryStale = sj.version !== npmV || regV !== npmV;
+  const registryStale = sj.version !== npmV || regV !== npmV || glama.version !== npmV;
+  // Nur der Registry-Publish ist teuer (Download + OIDC) und nur nötig, wenn die
+  // Registry selbst hinterherhängt.
+  const publishNoetig = sj.version !== npmV || regV !== npmV;
   const { appendFileSync } = await import("node:fs");
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    `registry_stale=${registryStale ? 1 : 0}\nnpm_latest=${npmV}\n`,
+    `registry_stale=${registryStale ? 1 : 0}\npublish_noetig=${publishNoetig ? 1 : 0}\nnpm_latest=${npmV}\n`,
   );
 }
 
