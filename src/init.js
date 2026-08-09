@@ -762,6 +762,7 @@ export async function runInit({ client = "auto", dryRun = false, cwd = process.c
     if (!dryRun) {
       for (const a of allActions) applyAction(a);
       lines.push("Eingerichtet. Starte deinen KI-Client neu, damit Hooks/Regeln greifen.");
+      lines.push(...(await naechsterSchritt()));
     } else {
       lines.push("Dry-Run: keine Datei wurde geändert. Ohne --dry-run erneut ausführen.");
     }
@@ -770,8 +771,56 @@ export async function runInit({ client = "auto", dryRun = false, cwd = process.c
   return lines.join("\n");
 }
 
+/**
+ * Der Schritt nach dem Einrichten: Wissen hineinbringen.
+ *
+ * WARUM (09.08.2026): Bis hierher endete `init` mit „Eingerichtet." — und der
+ * Nutzer stand vor einem LEEREN Gedächtnis. Die Technik lief, der erste Recall
+ * lieferte nichts, und ohne Treffer sieht niemand einen Nutzen. Genau so verlief
+ * die erste externe Anmeldung: Konto angelegt, zwei Minuten geblieben, nie
+ * wiedergekommen.
+ *
+ * Eine Einrichtung, die den Bestand nicht anspricht, ist auf halbem Weg stehen
+ * geblieben. Deshalb prüft init jetzt den Füllstand und nennt bei leerem
+ * Arbeitsbereich den einen Befehl, der ihn in Minuten füllt.
+ *
+ * Best-effort: Ist die Plattform nicht erreichbar oder fehlt der Token, bleibt
+ * der Hinweis allgemein. Die Einrichtung selbst darf daran nie scheitern.
+ */
+async function naechsterSchritt(statsFn) {
+  const zeilen = ["", "Nächster Schritt — Wissen hineinbringen:"];
+  let leer = true;
+  try {
+    const hole = statsFn ?? (await import("./client.js")).stats;
+    const s = await hole();
+    const anzahl = Number(s?.memories ?? s?.documents ?? 0);
+    leer = !(anzahl > 0);
+    if (!leer) {
+      zeilen.push(`  Ihr Arbeitsbereich enthält bereits ${anzahl} Einträge — Sie sind startklar.`);
+      zeilen.push("  Neue Ordner jederzeit nachziehen:  knowmind sync <ordner>");
+      return zeilen;
+    }
+  } catch {
+    // Plattform nicht erreichbar: Hinweis trotzdem geben, er schadet nie.
+  }
+
+  zeilen.push("  Ihr Gedächtnis ist noch leer. Ohne Inhalt findet die KI nichts,");
+  zeilen.push("  und der erste Versuch endet enttäuschend. Zwei Wege, beide dauern Minuten:");
+  zeilen.push("");
+  zeilen.push("  1. Vorhandene Unterlagen einlesen (Markdown, Text):");
+  zeilen.push("       knowmind sync ./docs");
+  zeilen.push("     Wiederholtes Einlesen ändert nichts doppelt — erkannt über den Inhalt.");
+  zeilen.push("");
+  zeilen.push("  2. Der KI im Gespräch etwas zum Behalten geben, zum Beispiel:");
+  zeilen.push("       „Merk dir in knowmind: Unsere Berichte prüft das Qualitätsmanagement,");
+  zeilen.push("        bevor sie an Kunden gehen.“");
+  zeilen.push("     Danach in einer neuen Sitzung danach fragen — die Antwort kommt aus dem Gedächtnis.");
+  return zeilen;
+}
+
 // Für Tests exportiert.
 export const _internals = {
+  naechsterSchritt,
   upsertMarkedBlock,
   writeOwnFile,
   ensureClaudeHookEntry,

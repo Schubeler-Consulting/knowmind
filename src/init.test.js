@@ -165,3 +165,29 @@ test("runInit generic gibt manuellen Snippet aus, schreibt nichts", async () => 
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });
 });
+
+// ── Nächster Schritt nach dem Einrichten ────────────────────────────
+// Eine Einrichtung, die den leeren Bestand verschweigt, lässt den Nutzer
+// mit einem Gedächtnis ohne Inhalt zurück — genau so verlief die erste
+// externe Anmeldung (04.08.2026).
+test("naechsterSchritt nennt bei leerem Bestand den Einlese-Befehl", async () => {
+  const zeilen = await _internals.naechsterSchritt(async () => ({ memories: 0 }));
+  const text = zeilen.join("\n");
+  assert.match(text, /noch leer/);
+  assert.match(text, /knowmind sync/);
+  assert.match(text, /Merk dir in knowmind/);
+});
+
+test("naechsterSchritt bestätigt einen gefüllten Bestand", async () => {
+  const zeilen = await _internals.naechsterSchritt(async () => ({ memories: 42 }));
+  const text = zeilen.join("\n");
+  assert.match(text, /42 Einträge/);
+  assert.doesNotMatch(text, /noch leer/);
+});
+
+test("naechsterSchritt bleibt bei unerreichbarer Plattform hilfreich", async () => {
+  const zeilen = await _internals.naechsterSchritt(async () => {
+    throw new Error("Netz weg");
+  });
+  assert.match(zeilen.join("\n"), /knowmind sync/);
+});
