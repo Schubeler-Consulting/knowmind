@@ -15,6 +15,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const DEFAULT_API = "https://knowmind.de";
 const NPX = "npx";
@@ -126,17 +127,51 @@ function tokenRef(secretStyle, literalToken) {
   }
 }
 
+/**
+ * Startbefehl für den MCP-Server.
+ *
+ * Unter Windows nicht direkt `npx`: Das ist ein Konsolenprogramm, und hat der
+ * KI-Client keine eigene Konsole (Desktop-Anwendung, IDE-Erweiterung), gibt
+ * Windows dem Kind bei JEDEM Werkzeugaufruf ein eigenes Fenster. Das blitzt
+ * nicht nur, es stiehlt den Tastaturfokus mitten im Tippen. Johann am
+ * 10.08.2026: „Viele werden es deshalb deinstallieren." — und er hat recht.
+ *
+ * Deshalb dazwischen `pythonw.exe` (GUI-Programm, öffnet selbst kein Fenster),
+ * das npx mit CREATE_NO_WINDOW startet und die Datenströme durchreicht. Ohne
+ * Python auf dem Rechner bleibt es beim direkten npx-Aufruf — eine ehrliche
+ * Grenze ist besser als eine halbe Lösung.
+ */
+function startBefehl() {
+  const pythonw = findePythonwFuerMcp();
+  if (!pythonw) return { command: NPX, args: NPX_ARGS };
+  const starter = join(dirname(fileURLToPath(import.meta.url)), "mcp-starter.py");
+  return { command: pythonw, args: [starter, NPX, ...NPX_ARGS] };
+}
+
+/** Vollständiger Pfad zu pythonw.exe, oder null. */
+function findePythonwFuerMcp() {
+  if (platform() !== "win32") return null;
+  const kandidaten = [];
+  const lokal = process.env.LOCALAPPDATA;
+  for (const v of ["313", "312", "311", "310"]) {
+    if (lokal) kandidaten.push(join(lokal, "Programs", "Python", `Python${v}`, "pythonw.exe"));
+    kandidaten.push(join("C:\\", `Python${v}`, "pythonw.exe"));
+  }
+  return kandidaten.find((p) => existsSync(p)) ?? null;
+}
+
 // Server-Eintrag im Schema der Familie.
 function serverEntry(ide, { apiUrl, literalToken }) {
   const env = {
     KNOWMIND_TOKEN: tokenRef(ide.secret, literalToken),
     KNOWMIND_API_URL: apiUrl,
   };
+  const { command, args } = startBefehl();
   if (ide.family === "servers") {
     // VS Code verlangt einen Transport-Typ.
-    return { type: "stdio", command: NPX, args: NPX_ARGS, env };
+    return { type: "stdio", command, args, env };
   }
-  return { command: NPX, args: NPX_ARGS, env };
+  return { command, args, env };
 }
 
 // Vollständiges Snippet (für --print / GUI-IDEs).
