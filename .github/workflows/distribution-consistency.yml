@@ -77,7 +77,18 @@ jobs:
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           ./mcp-publisher validate
           ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          # "cannot publish duplicate version" ist KEIN Fehler, sondern der
+          # gewünschte Endzustand: Die Registry führt die Fassung bereits. Das
+          # passiert regelmäßig, wenn ein Lauf nach dem Publish an einer
+          # anderen Stelle abbrach und wiederholt wird (10.08.2026, 0.3.4).
+          # Nur echte Fehlschläge dürfen den Lauf rot färben — sonst gewöhnt
+          # sich niemand mehr an die Meldung.
+          AUSGABE=$(./mcp-publisher publish 2>&1) || {
+            echo "$AUSGABE"
+            echo "$AUSGABE" | grep -q "duplicate version" || exit 1
+            echo "Registry führt diese Fassung bereits — nichts zu tun."
+          }
+          echo "$AUSGABE"
 
       # End-Prüfung: MUSS grün sein, sonst roter Lauf -> GitHub mailt den Maintainer.
       # (package.json vor npm = Hinweis, kein Fehler -> Lauf bleibt grün.)
