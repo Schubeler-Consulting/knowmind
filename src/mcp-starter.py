@@ -14,7 +14,7 @@ jedem Werkzeugaufruf blitzt es auf. Ein Gedächtnis, das bei jeder Nutzung den
 Fokus klaut, fliegt wieder runter, egal wie gut es ist.
 
 `node.exe` hat kein fensterloses Gegenstück. `pythonw.exe` ist ein GUI-Programm
-und öffnet selbst keins — es startet node mit CREATE_NO_WINDOW.
+und öffnet selbst keins — es gibt node eine versteckte Konsole.
 
 WARUM DURCHREICHEN STATT VERERBEN: Die naheliegende Fassung startet node ohne
 stdin/stdout-Umleitung, damit es die Handles des Elternprozesses erbt. Unter
@@ -34,7 +34,6 @@ import subprocess
 import sys
 import threading
 
-CREATE_NO_WINDOW = 0x08000000
 
 
 def pumpe(quelle, ziel) -> None:
@@ -53,6 +52,27 @@ def pumpe(quelle, ziel) -> None:
             ziel.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+def _ohne_fenster():
+    """Startet node in einer versteckten Konsole statt ganz ohne.
+
+    `CREATE_NO_WINDOW` allein nimmt dem Prozess die Konsole — und ein Kind,
+    dessen Eltern keine hat, legt sich eine neue an, die sichtbar ist. Am
+    02.09.2026 blitzte deshalb bei jedem Aufruf ein Fenster auf; gemessen
+    wurde: konsolenlos einmal Blitz in drei Läufen, versteckte Konsole
+    keinmal.
+
+    `CREATE_NEW_CONSOLE` mit `SW_HIDE` gibt dem Prozess eine eigene, aber
+    unsichtbare Konsole, die seine Kinder erben.
+    """
+    if sys.platform != "win32":
+        return {}
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = subprocess.SW_HIDE
+    return {"startupinfo": info,
+            "creationflags": subprocess.CREATE_NEW_CONSOLE}
 
 
 def main() -> int:
@@ -74,8 +94,8 @@ def main() -> int:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=sys.stderr,
-            creationflags=CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             bufsize=0,
+            **_ohne_fenster(),
         )
     except FileNotFoundError:
         sys.stderr.write(f"node nicht gefunden: {node}\n")
