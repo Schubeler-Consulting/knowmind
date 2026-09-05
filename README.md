@@ -1,203 +1,95 @@
 # knowmind
 
-**Ihr KI-Assistent kennt Ihr Unternehmen nicht.** Er beginnt jedes Gespräch bei null, und Sie
-erklären ihm zum wiederholten Mal dieselben Zusammenhänge. knowmind ist das Gedächtnis darunter:
-Was Sie einmal ablegen, steht in Claude, ChatGPT, Cursor und Ihren eigenen Anwendungen zur
-Verfügung. Betrieben in Deutschland, im Rechenzentrum Nürnberg.
-
-**Der Privat-Tarif kostet dauerhaft nichts und verlangt keine Zahlungsdaten.** Schnittstelle,
-Kommandozeile und MCP-Server sind in jedem Tarif enthalten, auch dort.
 
 <!-- mcp-name: io.github.Schubeler-Consulting/knowmind -->
 
-[![npm](https://img.shields.io/npm/v/knowmind)](https://www.npmjs.com/package/knowmind) · [knowmind.de](https://knowmind.de) · [Discord](https://discord.gg/nRguXx5hDQ) · dieses Paket unter Apache-2.0
+**Persistent memory for your AI tools.** Store something once, and it is available in Claude Code, Cursor, and any other MCP client that runs a local (stdio) server — as a typed knowledge graph with provenance, confidence, and a bitemporal history for every fact. Hosted in Germany (Hetzner, Nuremberg data center); the CLI and MCP server in this repository are Apache-2.0.
 
-## Installation
+**The free tier is permanently free and requires no payment details.** The API, CLI, and MCP server are included in every tier.
 
-```
-npm install -g knowmind
-```
+[![npm](https://img.shields.io/npm/v/knowmind)](https://www.npmjs.com/package/knowmind) · [knowmind.de](https://knowmind.de)
 
-Oder ohne Installation direkt als MCP-Server: `npx -y knowmind mcp`
+## Connect your AI tool in three steps
 
-## Einrichtung
-
-1. Kostenloses Konto auf [knowmind.de](https://knowmind.de) anlegen und dort einen Zugangsschlüssel
-   erzeugen: Dashboard → API-Tokens
-2. Lokal speichern:
+1. Create a free account at [knowmind.de](https://knowmind.de) and generate an access token: Dashboard → API tokens.
+2. Store the token locally:
 
 ```
-knowmind login --token kmt_xxxxxxxx
+npx -y knowmind login --token kmt_xxxxxxxx
 ```
 
-Alternativ über ENV:
+3. Wire up your client:
 
+**Claude Code** (one command)
 ```
-export KNOWMIND_TOKEN=kmt_xxxxxxxx
-export KNOWMIND_API_URL=https://knowmind.de
-```
-
-## Befehle
-
-```
-npx -y knowmind install <ide>       MCP-Server im KI-Client verdrahten (claude, cursor, vscode …)
-knowmind init                       Automatische Gedächtnis-Pflege im KI-Client einrichten
-knowmind search "Wo läuft die OKR-App?"
-knowmind upload notizen.md --title "Meeting Notizen 2026-05-12"
-knowmind stats
-knowmind health
-knowmind status                     Lebenszeichen des Gedächtnisses (Report)
-knowmind status --line              Einzeilige Statusline für Ihr KI-Werkzeug
-knowmind config
+claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx -- npx -y knowmind mcp
 ```
 
-Die Statusline (`knowmind status --line`) zeigt knowmind als grüne Lampe direkt in Ihrem
-KI-Werkzeug: ruhig grün, wenn erreichbar, grünes Flackern wie eine Festplatten-LED, während
-knowmind arbeitet, rot bei Ausfall. `knowmind init --client claude-code` bindet sie
-automatisch ein (eine bereits vorhandene eigene Statusline bleibt unangetastet).
-
-## Automatische Pflege einrichten (`knowmind init`)
-
-Damit Ihre KI knowmind selbsttätig pflegt — **Recall vor jeder Aufgabe**, **Sichern nach
-jeder sicherungswürdigen Runde** — richtet `knowmind init` die passenden Mechanismen für
-Ihren Client ein. Der Befehl erkennt den Client am Projekt- und Home-Verzeichnis
-(`.claude/`, `.cursor/`, `~/.codex/`) oder Sie wählen ihn explizit.
-
-```
-knowmind init                          # Client automatisch erkennen
-knowmind init --client claude-code     # gezielt für Claude Code
-knowmind init --client cursor          # gezielt für Cursor
-knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nichts)
-```
-
-**Was eingerichtet wird:**
-
-- **Claude Code** — projektlokale Hooks in `.claude/`:
-  - *UserPromptSubmit* → ruft vor jeder inhaltlichen Frage `knowmind_recall` auf und reicht die
-    Top-Treffer als Kontext nach (Memory-First, automatisch).
-  - *Stop* → erinnert die KI daran, mit `knowmind_store_memory` zu sichern, wenn die Runde
-    Sicherungswürdiges enthielt (Deploy/Commit, neue Regel, Entscheidung) und noch nichts
-    gespeichert wurde.
-  - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
-- **Cursor** — `.cursor/rules/knowmind.mdc` mit der Memory-First-Regel (`alwaysApply`).
-- **Claude Desktop / Codex / generisch** — kein automatischer Hook-Mechanismus vorhanden;
-  der Befehl zeigt den Memory-First-Text zum manuellen Einfügen (siehe Grenze unten).
-
-**Idempotent & nicht-destruktiv:** Ein zweiter Lauf erzeugt keine Duplikate
-(marker-/befehls-basierte Ersetzung); bestehende fremde Dateien und Hooks bleiben
-unangetastet. Mit `--dry-run` sehen Sie jede Aktion vorab.
-
-> **Grenze der Automatik:** Eine *harte* Erzwingung der Pflege gibt es nur in Clients mit
-> Hook-/Rule-Mechanismus (Claude Code, Cursor). In Clients ohne solchen Mechanismus
-> (z. B. Claude Desktop, Codex CLI) greifen die **MCP-instructions** (werden beim
-> Verbinden gelesen) und die **MCP-prompts** — eine modellabhängige Steuerung ohne
-> technische Garantie.
-
-## MCP-Server einrichten
-
-knowmind ist ein MCP-Server (`npx -y knowmind mcp`, stdio). Token aus dem knowmind.de-Dashboard
-(→ API-Tokens) als `KNOWMIND_TOKEN`; optional `KNOWMIND_API_URL` (Standard `https://knowmind.de`).
-
-**Claude Code**
-```
-claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx --env KNOWMIND_API_URL=https://knowmind.de -- npx -y knowmind mcp
-```
-
-**Claude Desktop / Cursor / Windsurf / Cline / Continue / Goose / Zed** (`claude_desktop_config.json`, `~/.cursor/mcp.json`, …)
+**Cursor** (`~/.cursor/mcp.json`) — also works for Claude Desktop, Windsurf, Cline, Continue, Goose, and Zed with their respective config files:
 ```json
 {
   "mcpServers": {
     "knowmind": {
       "command": "npx",
       "args": ["-y", "knowmind", "mcp"],
-      "env": { "KNOWMIND_TOKEN": "kmt_xxx", "KNOWMIND_API_URL": "https://knowmind.de" }
-    }
-  }
-}
-```
-> Windows-Hinweis: falls `npx` nicht direkt startet, `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`.
-
-**VS Code / GitHub Copilot** (`.vscode/mcp.json` — Top-Level `servers` + `inputs`)
-```json
-{
-  "inputs": [{ "id": "knowmind_token", "type": "promptString", "description": "Knowmind API token", "password": true }],
-  "servers": {
-    "knowmind": {
-      "command": "npx",
-      "args": ["-y", "knowmind", "mcp"],
-      "env": { "KNOWMIND_TOKEN": "${input:knowmind_token}", "KNOWMIND_API_URL": "https://knowmind.de" }
+      "env": { "KNOWMIND_TOKEN": "kmt_xxx" }
     }
   }
 }
 ```
 
-**Codex CLI** (`~/.codex/config.toml`)
-```toml
-[mcp_servers.knowmind]
-command = "npx"
-args = ["-y", "knowmind", "mcp"]
-env = { KNOWMIND_TOKEN = "kmt_xxx", KNOWMIND_API_URL = "https://knowmind.de" }
+**Any other MCP client**: knowmind is a standard MCP server over stdio (`npx -y knowmind mcp`). On Windows, if `npx` does not start directly, use `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`.
+
+`npx -y knowmind install <ide>` writes this configuration for you (e.g. `claude`, `cursor`, `vscode`), and `npx -y knowmind init` sets up automatic memory hygiene — recall before each task, store after each meaningful change — for clients with a hook or rule mechanism (Claude Code, Cursor).
+
+## How knowmind stores facts
+
+- **Bitemporal history.** Every fact carries two time axes: when it was true and when it was recorded. Corrections never overwrite the original; the old statement stays queryable with the date it stopped being valid, so you can reconstruct what the system knew on any given day.
+- **Provenance and confidence per fact.** New facts require a confidence level and keep a link to their source. Older facts without a confidence level are marked as such.
+- **Typed knowledge graph.** Entities and relations use a restricted set of edge types; catch-all relations are rejected at write time.
+- **Operated in the EU, isolated per tenant.** The service runs on Hetzner in Nuremberg, Germany, with tenant isolation, a public data processing agreement, and a subprocessor list at [knowmind.de/legal/avv](https://knowmind.de/legal/avv). Access logs are hash-chained and externally timestamped (RFC 3161).
+
+knowmind is a hosted service; there is no self-hosted community edition. If you need self-hosting, one of the projects below will serve you better. knowmind is built for the people and teams that need an operated memory service with an audit trail in the EU.
+
+## Pricing
+
+| Tier | Price | For whom |
+|---|---|---|
+| Free | €0 | individuals and evaluation |
+| Pro | €15/month or €150/year | individual professionals |
+| Team | €99/month | teams with shared memory |
+| Business | €349/month | larger teams |
+| Enterprise | from €1,000/month | organizations with on-premise requirements |
+
+The free tier includes 2,500 memories, 1 user, and a 30-day access log.
+
+How that compares (vendor pricing pages, checked 2026-09-05):
+
+| Product | Free tier | First paid tier | Self-hosting |
+|---|---|---|---|
+| knowmind | 2,500 memories | €15/month | no (Enterprise on-premise option) |
+| Mem0 | 10,000 entries, 1,000 retrievals/month | $19/month | yes (Apache-2.0) |
+| Zep | 10,000 credits/month | $125/month | Graphiti open source; Zep as BYOC |
+| cognee | 1M tokens, 1 workspace | $2.50 per 1M tokens | yes |
+| Letta | limited agents, own keys | $20/month | yes (per vendor) |
+| Supermemory | ~$5 usage included | $19/month | from Scale tier |
+
+Details and current prices: [knowmind.de/pricing](https://knowmind.de/pricing).
+
+## Commands
+
+```
+npx -y knowmind search "Where does the staging deploy run?"
+npx -y knowmind upload notes.md --title "Meeting notes 2026-05-12"
+npx -y knowmind stats
+npx -y knowmind health
+npx -y knowmind status --line   # one-line status for your AI tool's statusline
 ```
 
-**Gemini CLI** (`~/.gemini/settings.json`) — gleiche `mcpServers`-Struktur wie Claude Desktop.
+## Links
 
-**Remote (ohne lokale Installation)** — für Clients mit HTTP-MCP-Support direkt der gehostete Endpoint:
-```json
-{ "type": "http", "url": "https://knowmind.de/api/mcp/v1", "headers": { "Authorization": "Bearer kmt_xxx" } }
-```
+[Documentation](https://knowmind.de/docs) · [Pricing](https://knowmind.de/pricing) · [Data processing agreement](https://knowmind.de/legal/avv) · [Privacy](https://knowmind.de/legal/datenschutz)
 
-Token kann statt per `env` auch lokal via `knowmind login --token kmt_xxx` (→ `~/.knowmind/config.json`) hinterlegt werden.
+---
 
-## Tools (im MCP-Modus)
-
-Der MCP-Modus ist seit 0.1.18 ein reiner Proxy auf die Plattform: Tool-Namen,
-Schemas und Safety-Annotations kommen direkt vom Server und sind damit immer
-identisch mit dem Remote-Connector (`https://knowmind.de/api/mcp/v1`).
-
-- `knowmind_recall` — Hybride Suche im Wissensspeicher des Mandanten
-- `knowmind_recall_at_time` — Recall mit Zeitfilter (bi-temporal)
-- `knowmind_store_memory` — Neue Erinnerung anlegen (Titel + Inhalt)
-- `knowmind_upload_document` — Längeren Text als Dokument ingestieren (Upsert-per-Titel: gleicher Titel ersetzt die alte Version)
-- `knowmind_update_fact` — Fakt bi-temporal aktualisieren (Historie bleibt)
-- `knowmind_link` — Typisierte Beziehung anlegen (Inverse wird automatisch gesetzt)
-- `knowmind_unlink` — Beziehung wieder entfernen (samt Inverse)
-- `knowmind_list_relations` — Beziehungen einer Erinnerung auflisten
-- `knowmind_list_recent` — Zuletzt angelegte Dokumente/Memories des Mandanten auflisten, sortiert nach Anlagedatum absteigend
-- `knowmind_stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
-- `knowmind_health` — Verfügbarkeits-Status der Plattform
-
-Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden
-serverseitig automatisch mit angelegt. Hinweis: `knowmind upload` als
-CLI-Befehl läuft über die REST-Schnittstelle (`/api/documents`), nicht über MCP.
-
-## Daten in Deutschland
-
-knowmind wird in Deutschland betrieben: Ihre Inhalte (Memories, Account- und Metadaten) werden
-ausschließlich auf Servern in Deutschland (Hetzner-Rechenzentrum) gespeichert und verlassen Deutschland nicht.
-Auftragsverarbeitung (AVV) nach Art. 28 DSGVO verfügbar: https://knowmind.de/legal/avv
-
-**Hinweis (Bring-your-own-Key):** Wenn Sie eigene Schlüssel externer KI-Anbieter hinterlegen, werden Ihre
-Anfragen direkt an den von Ihnen gewählten Anbieter übermittelt. Sitzt dieser außerhalb der EU, kann dabei
-ein Drittlandtransfer stattfinden, für den Sie als Verantwortlicher zuständig sind.
-
-## Haftung & Nutzung (Disclaimer)
-
-- **Software:** Dieses Paket steht unter der **Apache-Lizenz 2.0** und wird „AS IS" ohne jegliche
-  Gewährleistung bereitgestellt; die Haftung ist im Rahmen der Lizenz (Abschnitte 7 und 8)
-  ausgeschlossen bzw. beschränkt. Siehe `LICENSE`.
-- **Eigenes Konto, eigener Token:** knowmind bündelt keine Zugangsdaten. Sie nutzen Ihren eigenen
-  knowmind.de-Account und API-Token. Anlegen: https://knowmind.de/dashboard/api-tokens
-- **Eigene Kosten/Verbrauch:** Jede Nutzung (API-Anfragen, Token-/Kontingentverbrauch, ggf.
-  modellbezogene Kosten) erfolgt über Ihren eigenen Account und auf Ihre Verantwortung. Verbrauch
-  und Kosten sind im knowmind.de-Dashboard transparent einsehbar.
-- **Service-Bedingungen:** Für die Nutzung der gehosteten Plattform gelten die AGB und die
-  Datenschutzerklärung von knowmind.de:
-  [AGB](https://knowmind.de/legal/agb) · [Datenschutz](https://knowmind.de/legal/datenschutz) ·
-  [AVV](https://knowmind.de/legal/avv) · [Impressum](https://knowmind.de/legal/impressum)
-- **Kein Einsatz in sicherheitskritischen Bereichen:** knowmind ist ein Gedächtnis-/Recall-Dienst und
-  **nicht** für den Betrieb von selbstfahrenden Fahrzeugen, kritischer Infrastruktur, medizinischen oder
-  lebenserhaltenden Systemen oder sonstigen Anwendungen bestimmt, bei denen ein Fehler oder Ausfall zu Tod,
-  Personen-, Umwelt- oder schweren Sachschäden führen kann. Ein Einsatz in solchen Umgebungen erfolgt auf
-  alleiniges Risiko des Nutzers.
-
-Anbieter: Schübeler Consulting — Johann Jörgen Schübeler. Kontakt: info@schuebeler-consulting.de
+Die deutsche Fassung steht in [README.de.md](README.de.md).
