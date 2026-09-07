@@ -1,0 +1,76 @@
+# Veröffentlicht das Paket auf npm — ohne Token, über Trusted Publishing.
+#
+# **Warum es diesen Ablauf gibt.** Am 07.09.2026 scheiterte `npm publish` an der
+# Zwei-Faktor-Sperre des Kontos: Die Veröffentlichung verlangt ein Einmalkennwort
+# aus einer Authenticator-App, das nur ein Mensch hat. Der Ausweg war ein
+# granularer Token mit „Bypass 2FA" — ein dauerhaftes Geheimnis, das jemand
+# aufbewahren muss und das gestohlen werden kann.
+#
+# Trusted Publishing kommt ohne aus: npm vertraut nicht einem Token, sondern
+# diesem Ablauf in diesem Repository. GitHub stellt dafür bei jedem Lauf ein
+# kurzlebiges Zeugnis aus (`id-token: write`), npm prüft es gegen die
+# hinterlegte Angabe. Es gibt dann kein Geheimnis mehr, das ablaufen, verloren
+# gehen oder abfließen kann.
+#
+# `--provenance` hängt der Veröffentlichung zusätzlich einen Nachweis an: Aus
+# welchem Commit, aus welchem Ablauf, aus welchem Repository sie stammt. Auf
+# npmjs.com steht danach ein Herkunftsnachweis am Paket.
+#
+# EINRICHTUNG (einmalig, auf npmjs.com, durch den Kontoinhaber):
+#   npmjs.com → Paket `knowmind` → Settings → Trusted Publisher → GitHub Actions
+#   Organization or user:  Schubeler-Consulting
+#   Repository:            knowmind
+#   Workflow filename:     publish-npm.yml
+#   Environment name:      (leer lassen)
+# Danach ist kein npm-Token mehr nötig, und `npm.publish_token` im Tresor kann
+# auf npmjs.com widerrufen werden.
+
+name: Auf npm veröffentlichen
+
+on:
+  # Läuft, wenn ein Release erscheint — dieselbe Auslösung wie die
+  # MCP-Registry, damit beide Kanäle denselben Stand tragen.
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # Ohne dieses Recht stellt GitHub kein Zeugnis aus, und npm weist die
+      # Veröffentlichung mit „missing id-token" ab.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # npm 11.5.1 oder neuer bringt Trusted Publishing mit. Die Fassung, die
+      # mit Node ausgeliefert wird, ist häufig älter.
+      - name: npm auf eine Fassung mit Trusted Publishing heben
+        run: npm install -g npm@latest
+
+      - name: Fassung gegen den Tag prüfen
+        # Ein Release, dessen Tag nicht zur Paketfassung passt, veröffentlicht
+        # sonst still etwas anderes als angekündigt.
+        run: |
+          PAKET=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ -n "$TAG" ] && [ "$TAG" != "$PAKET" ] && [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            echo "Tag $TAG und package.json $PAKET stimmen nicht überein." >&2
+            exit 1
+          fi
+          echo "Fassung $PAKET"
+
+      - name: Werkzeugliste gegen die Discovery abgleichen
+        # Der mitgelieferte Rückfall veraltet, sobald der Server ein Werkzeug
+        # bekommt. Eine Veröffentlichung mit veralteter Liste wäre schlimmer als
+        # keine.
+        run: node scripts/tools-abgleich.mjs
+
+      - name: Veröffentlichen
+        run: npm publish --provenance --access public
