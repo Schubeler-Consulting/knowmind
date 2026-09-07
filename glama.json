@@ -3,25 +3,10 @@
   "maintainers": [
     "WhoSoEverM8"
   ],
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Persistent memory for AI agents, hosted in Germany: hybrid recall, knowledge graph and bi-temporal facts over MCP. EU hosting (GDPR), BYOK.",
   "homepage": "https://knowmind.de",
   "repository": {
     "url": "https://github.com/Schubeler-Consulting/knowmind"
-  },
-  "tools": [
-    "knowmind_recall",
-    "knowmind_health",
-    "knowmind_stats",
-    "knowmind_list_recent",
-    "knowmind_store_memory",
-    "knowmind_upload_document",
-    "knowmind_update_fact",
-    "knowmind_recall_at_time",
-    "knowmind_entity",
-    "knowmind_link",
-    "knowmind_schema",
-    "knowmind_unlink",
-    "knowmind_list_relations"
-  ]
+  }
 }
