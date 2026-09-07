@@ -1,5 +1,10 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.7 (2026-09-07)
+
+- Veröffentlichung über GitHub Actions: Das Paket wird ohne dauerhaften Token
+  ausgeliefert, und jede Veröffentlichung trägt einen Herkunftsnachweis.
+
 ## 0.3.6 (2026-09-07)
 
 **Die Werkzeugliste steht auch ohne Netz zur Verfügung**
