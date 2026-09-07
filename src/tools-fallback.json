@@ -1,0 +1,466 @@
+{
+  "_hinweis": "Rückfall für tools/list, wenn die Discovery nicht erreichbar ist. Erzeugt aus https://knowmind.de/api/mcp/v1. Abgleich: npm run tools:abgleich",
+  "stand": "2026-09-07",
+  "quelle": "https://knowmind.de/api/mcp/v1",
+  "protocolVersion": "2025-06-18",
+  "tools": [
+    {
+      "name": "knowmind_recall",
+      "annotations": {
+        "title": "Recall - retrieve knowledge",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + graph hops) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language question; full sentences retrieve better than keywords."
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 5,
+            "description": "Number of chunks to return (1-25, default 5)."
+          },
+          "hops": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "default": 2,
+            "description": "Graph expansion depth over typed relations (0-3, default 2); 0 = text/vector only, no graph."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_health",
+      "annotations": {
+        "title": "Service health",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Return the health of the knowmind backend (Postgres, memory service, graph). Use before a batch of writes or when calls fail, to tell an outage apart from an empty result. Returns a status object per component. Read scope suffices; takes no parameters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "knowmind_stats",
+      "annotations": {
+        "title": "Corpus statistics",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Return current counts for the tenant corpus: memories, graph edges and vector chunks. Use to gauge how much has been stored; for the actual entries use knowmind_list_recent or knowmind_recall. Read scope suffices; takes no parameters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "knowmind_list_recent",
+      "annotations": {
+        "title": "Recent entries",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "List the most recently created documents/memories in the tenant corpus, newest first (by created_at). Same corpus that recall searches. Use to review what was just stored or confirm a write landed; use knowmind_recall when you already know what you are looking for. Graph-only entities without a timestamp do not appear, so this count intentionally differs from stats.memories. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10,
+            "description": "Number of newest entries to return (1-50, default 10)."
+          }
+        }
+      }
+    },
+    {
+      "name": "knowmind_store_memory",
+      "annotations": {
+        "title": "Store memory",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "description": "Store durable insights the moment they arise - decisions, preferences, facts, results, appointments. Persists one memory entry in the tenant corpus (Postgres + vector index + graph node), afterwards findable via knowmind_recall and knowmind_list_recent. Append-only: the same title replaces nothing (use knowmind_update_fact to supersede); sha-identical content is detected as idempotent (unchanged). Returns the new memory id. Use for a single short fact; for long or multi-fact text use knowmind_upload_document. GIVE THE EDGES ALONG: whatever the text says about people, organisations, projects, hosts or technologies belongs into `relations` in THIS call - name the counterpart, the server creates its node and the edge, no second call needed. A memory without edges is a note; with edges it becomes a graph that answers questions nobody wrote down. Use knowmind_link separately only to connect two entries that already exist. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Short human-readable title (a few words). Not a uniqueness key - duplicate titles create separate entries."
+          },
+          "content": {
+            "type": "string",
+            "description": "The memory text. Keep it to one atomic fact per entry so it stays retrievable and updatable."
+          },
+          "memory_type": {
+            "type": "string",
+            "enum": [
+              "semantic",
+              "episodic",
+              "procedural",
+              "reference"
+            ],
+            "default": "semantic",
+            "description": "Kind of memory: semantic (durable fact), episodic (event), procedural (how-to), reference (pointer to a resource). Default semantic."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Free-text keywords for later filtering (lowercase, no spaces recommended)."
+          },
+          "source": {
+            "type": "string",
+            "description": "Where this came from - URL, file path, or a short note. Free text, stored for provenance."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Knowledge domain this entry belongs to, by its short key (e.g. 'sales', 'engineering'). Unknown keys are ignored and the entry stays unassigned - it is never guessed into a domain."
+          },
+          "relations": {
+            "type": "array",
+            "description": "Edges from this entry to the things it talks about - set them HERE, in the same call. Name the counterpart in plain words; the server finds or creates its node and draws the edge, so you need neither knowmind_recall nor knowmind_entity nor knowmind_link for it. Example: storing 'Anna Meier leitet die IT bei der Muster GmbH' carries [{predicate: 'WORKS_FOR', object: 'Muster GmbH', object_class: 'Organization'}]. An entry without edges is a note; with edges it answers questions nobody wrote down. Allowed predicate values: ABOUT (Contract|Document|FileResource → Topic), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "predicate": {
+                  "type": "string",
+                  "description": "Edge type in UPPER_SNAKE_CASE from the allowed list."
+                },
+                "object": {
+                  "type": "string",
+                  "description": "Proper name of the counterpart, as it would be written in a document ('Muster GmbH', not 'the client')."
+                },
+                "object_class": {
+                  "type": "string",
+                  "description": "Class of the counterpart (Person, Organization, Application, Host, Technology, ...). Pick it from knowmind_schema."
+                },
+                "object_description": {
+                  "type": "string",
+                  "description": "One sentence about the counterpart, used when its node has to be created. Optional."
+                },
+                "confidence": {
+                  "type": "number",
+                  "description": "Edge confidence in [0..1]; 1.0 for a fact stated verbatim, 0.7 for a clear paraphrase. Below that, leave the edge out."
+                }
+              },
+              "required": [
+                "predicate",
+                "object"
+              ]
+            }
+          }
+        },
+        "required": [
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_upload_document",
+      "annotations": {
+        "title": "Upload document",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "description": "Ingest a longer text as one document into the tenant corpus: chunk splitting, embeddings, vector chunks and graph nodes. Upsert-by-title: if a document with the same title exists, the new version replaces the old one (server default). Use for long-form or multi-fact content (a report, a page, a doc); for a single short fact use knowmind_store_memory. Returns the document id and the number of chunks written. AFTER INGESTING: extract the facts the text states about people, organisations, projects, products, technologies and hosts, and create the corresponding edges via knowmind_link. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Document title. Acts as the upsert key - an existing document with the same title is replaced."
+          },
+          "content": {
+            "type": "string",
+            "description": "Full document text (Markdown or plain); chunked and embedded server-side."
+          },
+          "source": {
+            "type": "string",
+            "description": "Origin - URL or file path. Free text, stored for provenance."
+          },
+          "relations": {
+            "type": "array",
+            "description": "Edges from this document to the things it talks about - set them HERE, in the same call. Name the counterpart in plain words; the server finds or creates its node and draws the edge. Allowed predicate values: ABOUT (Contract|Document|FileResource → Topic), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "predicate": {
+                  "type": "string",
+                  "description": "Edge type in UPPER_SNAKE_CASE from the allowed list."
+                },
+                "object": {
+                  "type": "string",
+                  "description": "Proper name of the counterpart."
+                },
+                "object_class": {
+                  "type": "string",
+                  "description": "Class of the counterpart (Person, Organization, Application, Host, Technology, ...)."
+                },
+                "object_description": {
+                  "type": "string",
+                  "description": "One sentence about the counterpart, used when its node has to be created. Optional."
+                },
+                "confidence": {
+                  "type": "number",
+                  "description": "Edge confidence in [0..1]."
+                }
+              },
+              "required": [
+                "predicate",
+                "object"
+              ]
+            }
+          }
+        },
+        "required": [
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_update_fact",
+      "annotations": {
+        "title": "Update fact (bi-temporal)",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "description": "Supersede a known fact without losing history: the existing memory gets valid_to=now, a new memory with valid_from=now is created and linked via SUPERSEDES. Use this instead of knowmind_store_memory when a fact CHANGES (address moved, contract renewed) - old statements are marked outdated, not deleted, so the timeline stays auditable and queryable via knowmind_recall_at_time. Returns the new memory id. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "ID of the memory to supersede; get it via knowmind_recall - never invent it."
+          },
+          "new_title": {
+            "type": "string",
+            "description": "Title of the new, now-valid memory."
+          },
+          "new_content": {
+            "type": "string",
+            "description": "Content of the new memory (the updated fact)."
+          },
+          "update_reason": {
+            "type": "string",
+            "description": "Why it changed (e.g. 'address changed', 'contract renewed'); stored on the SUPERSEDES edge."
+          }
+        },
+        "required": [
+          "target_id",
+          "new_title",
+          "new_content"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_recall_at_time",
+      "annotations": {
+        "title": "Recall at time",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Time-travel recall: return only memories that were valid at a given instant (valid_from <= as_of <= valid_to, or still open). Answers 'what did the agent know on March 14?'. Use instead of knowmind_recall when the point in time matters; otherwise use knowmind_recall for the current truth. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language question."
+          },
+          "as_of": {
+            "type": "string",
+            "description": "ISO-8601 timestamp to evaluate validity at; defaults to now. Example: '2026-03-14T00:00:00Z'."
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 5,
+            "description": "Number of chunks to return (1-25, default 5)."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_entity",
+      "annotations": {
+        "title": "Create entity",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Create the node for a thing the corpus talks about - a person, an organisation, an application, a host, a technology - or return the existing one. THE GRAPH NEEDS THESE: memories are texts, and two texts mentioning the same server stay unconnected until that server exists as its own node. Create an entity when a name recurs across memories or when you are about to link something that has no node yet, then connect it with knowmind_link. Same name, same class and same tenant always return the same id, so calling twice creates no duplicate. Give the entity its plain proper name (\"PostgreSQL\", not \"the database we use\"), and pick the class from the catalogue in knowmind_schema. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Proper name of the thing, as it would be written in a document. No role, no status, no description."
+          },
+          "entity_class": {
+            "type": "string",
+            "description": "Class from the catalogue (knowmind_schema -> entityClasses), e.g. Person, Organization, Application, Host, Technology."
+          },
+          "description": {
+            "type": "string",
+            "description": "One sentence saying what this is. Optional, helps later retrieval."
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Other spellings the same thing appears under. Optional."
+          }
+        },
+        "required": [
+          "name",
+          "entity_class"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_link",
+      "annotations": {
+        "title": "Link relation",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Create a typed relation between two memory nodes (a knowledge-graph edge). THIS IS HOW THE GRAPH IS BUILT: after storing memories, connect them - a corpus without edges answers only what a single note already says. Subject and object classes must match the predicate; the inverse edge is materialized automatically, and derived edges (RUNS_ON, WORKS_FOR_CLIENT, HOST_SERVES_CLIENT, DEPENDS_ON_SUPPLIER) are computed by the server - never set them by hand. Get both node IDs via knowmind_recall first, and call knowmind_schema for the full catalogue with explanations. Allowed rel_type values: ABOUT (Contract|Document|FileResource → Topic), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project). Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from_id": {
+            "type": "string",
+            "description": "Memory ID of the source node (get it via knowmind_recall)."
+          },
+          "to_id": {
+            "type": "string",
+            "description": "Memory ID of the target node."
+          },
+          "rel_type": {
+            "type": "string",
+            "description": "Edge type in UPPER_SNAKE_CASE from the allowed list. Must fit the subject and object classes."
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Edge confidence in [0..1]; 1.0 for a fact stated verbatim, 0.7 for a clear paraphrase. Below that, do not create the edge."
+          }
+        },
+        "required": [
+          "from_id",
+          "to_id",
+          "rel_type"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_schema",
+      "annotations": {
+        "title": "Graph schema",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Return the relation catalogue of this tenant's knowledge graph: every allowed edge type with its subject and object classes and an explanation of when to use it. Call this before building edges with knowmind_link, so you pick the right predicate instead of the nearest-sounding one. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "knowmind_unlink",
+      "annotations": {
+        "title": "Remove relation",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "Delete a typed relation between two memory nodes; the inverse edge is removed with it. Idempotent - deleting a non-existent edge is a no-op. Use to correct a wrong link created via knowmind_link. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from_id": {
+            "type": "string",
+            "description": "Memory ID of the source node."
+          },
+          "to_id": {
+            "type": "string",
+            "description": "Memory ID of the target node."
+          },
+          "rel_type": {
+            "type": "string",
+            "description": "Edge type to remove (UPPER_SNAKE_CASE, exactly as created)."
+          }
+        },
+        "required": [
+          "from_id",
+          "to_id",
+          "rel_type"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_list_relations",
+      "annotations": {
+        "title": "List relations",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "List all relations of one memory (incoming and outgoing), each with its edge type and the connected node. Use to inspect how an entity is connected before adding or removing edges with knowmind_link/knowmind_unlink; find the memory_id first via knowmind_recall. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "description": "Memory ID whose relations to list (get it via knowmind_recall)."
+          }
+        },
+        "required": [
+          "memory_id"
+        ]
+      }
+    }
+  ]
+}

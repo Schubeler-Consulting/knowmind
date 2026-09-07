@@ -1,5 +1,18 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.6 (2026-09-07)
+
+**Die Werkzeugliste steht auch ohne Netz zur Verfügung**
+- `tools/list` beantwortete der Server bisher ausschließlich über die
+  öffentliche Discovery auf knowmind.de. War der Weg dorthin versperrt — eine
+  Sandbox ohne Netz, ein Verzeichnis-Crawler hinter einer Firewall —, bekam der
+  Aufrufer einen Fehler und sah kein einziges Werkzeug. Das Paket bringt die
+  Liste jetzt mit und nutzt sie, wenn die Discovery nicht antwortet; ein
+  Hinweis auf der Fehlerausgabe nennt den Stand.
+- `npm run tools:abgleich` vergleicht die mitgelieferte Liste mit der
+  Discovery und schlägt an, sobald beide auseinanderlaufen.
+- Verbesserungen der Stabilität.
+
 ## 0.3.2 (2026-08-04)
 
 **`knowmind install`: zwei neue Ziele, ein Befehl richtet alles ein**

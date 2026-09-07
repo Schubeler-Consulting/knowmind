@@ -31,6 +31,7 @@
  * Protokoll: stdio mit zeilenweise JSON (NDJSON-Style). Jedes Frame ist ein
  * vollständiges JSON-RPC-Objekt.
  */
+import { readFileSync } from "node:fs";
 import { loadConfig, VERSION } from "./config.js";
 import { createInterface } from "node:readline";
 
@@ -164,6 +165,32 @@ async function probeAuth() {
   }
 }
 
+/**
+ * Die mitgelieferte Werkzeugliste.
+ *
+ * Sie ist der Rückfall, wenn die Discovery nicht erreichbar ist, und sie
+ * veraltet, sobald der Server ein Werkzeug bekommt. `npm run tools:abgleich`
+ * vergleicht sie mit der Discovery und schlägt an, sobald beide auseinander
+ * laufen.
+ */
+function ladeFallback() {
+  try {
+    const pfad = new URL("./tools-fallback.json", import.meta.url);
+    return JSON.parse(readFileSync(pfad, "utf8"));
+  } catch {
+    return { tools: [], stand: "unbekannt" };
+  }
+}
+
+function fallbackTools() {
+  const d = ladeFallback();
+  return Array.isArray(d.tools) ? d.tools : [];
+}
+
+function fallbackStand() {
+  return ladeFallback().stand || "unbekannt";
+}
+
 export async function runStdioServer() {
   // Kein Token konfiguriert → Discovery-Modus: initialize/tools/list laufen
   // über die öffentliche Server-Discovery, tools/call verlangt Login.
@@ -239,20 +266,24 @@ export async function runStdioServer() {
           continue;
         }
         if (req.method === "tools/list") {
+          let tools = [];
           try {
             const pub = await fetchPublicDiscovery();
-            const tools = Array.isArray(pub?.tools) ? pub.tools : [];
-            write({ jsonrpc: "2.0", id: req.id ?? null, result: { tools } });
+            tools = Array.isArray(pub?.tools) ? pub.tools : [];
           } catch (e) {
-            write({
-              jsonrpc: "2.0",
-              id: req.id ?? null,
-              error: {
-                code: -32000,
-                message: `Knowmind-Discovery nicht erreichbar: ${e instanceof Error ? e.message : String(e)}`,
-              },
-            });
+            // Der Weg zur Discovery kann versperrt sein: eine Sandbox ohne
+            // Netz, ein Verzeichnis-Crawler hinter einer Firewall. Vorher gab
+            // es hier einen Fehler, und der Aufrufer sah KEIN einziges
+            // Werkzeug — für eine Inspektion sieht das aus wie ein Server ohne
+            // Funktionen. Deshalb der mitgelieferte Stand.
+            tools = fallbackTools();
+            process.stderr.write(
+              `knowmind: Discovery nicht erreichbar (${e instanceof Error ? e.message : String(e)}), ` +
+                `nutze die mitgelieferte Werkzeugliste (${tools.length} Werkzeuge, Stand ${fallbackStand()}).
+`,
+            );
           }
+          write({ jsonrpc: "2.0", id: req.id ?? null, result: { tools } });
           continue;
         }
         if (req.method === "prompts/list") {
