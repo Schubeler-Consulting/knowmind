@@ -3,7 +3,7 @@
   "maintainers": [
     "WhoSoEverM8"
   ],
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Persistent memory for AI agents, hosted in Germany: hybrid recall, knowledge graph and bi-temporal facts over MCP. EU hosting (GDPR), BYOK.",
   "homepage": "https://knowmind.de",
   "repository": {
