@@ -73,7 +73,7 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 **Was eingerichtet wird:**
 
 - **Claude Code** — projektlokale Hooks in `.claude/`:
-  - *UserPromptSubmit* → ruft vor jeder inhaltlichen Frage `knowmind_recall` auf und reicht die
+  - *UserPromptSubmit* → ruft vor jeder inhaltlichen Frage `knowmind_recall_memories` auf und reicht die
     Top-Treffer als Kontext nach (Memory-First, automatisch).
   - *Stop* → erinnert die KI daran, mit `knowmind_store_memory` zu sichern, wenn die Runde
     Sicherungswürdiges enthielt (Deploy/Commit, neue Regel, Entscheidung) und noch nichts
@@ -154,21 +154,45 @@ Der MCP-Modus ist seit 0.1.18 ein reiner Proxy auf die Plattform: Tool-Namen,
 Schemas und Safety-Annotations kommen direkt vom Server und sind damit immer
 identisch mit dem Remote-Connector (`https://knowmind.de/api/mcp/v1`).
 
-- `knowmind_recall` — Hybride Suche im Wissensspeicher des Mandanten
+- `knowmind_recall_memories` — Hybride Suche im Wissensspeicher des Mandanten
 - `knowmind_recall_at_time` — Recall mit Zeitfilter (bi-temporal)
 - `knowmind_store_memory` — Neue Erinnerung anlegen (Titel + Inhalt)
 - `knowmind_upload_document` — Längeren Text als Dokument ingestieren (Upsert-per-Titel: gleicher Titel ersetzt die alte Version)
 - `knowmind_update_fact` — Fakt bi-temporal aktualisieren (Historie bleibt)
-- `knowmind_link` — Typisierte Beziehung anlegen (Inverse wird automatisch gesetzt)
-- `knowmind_unlink` — Beziehung wieder entfernen (samt Inverse)
+- `knowmind_link_entities` — Typisierte Beziehung anlegen (Inverse wird automatisch gesetzt)
+- `knowmind_unlink_entities` — Beziehung wieder entfernen (samt Inverse)
 - `knowmind_list_relations` — Beziehungen einer Erinnerung auflisten
 - `knowmind_list_recent` — Zuletzt angelegte Dokumente/Memories des Mandanten auflisten, sortiert nach Anlagedatum absteigend
-- `knowmind_stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
-- `knowmind_health` — Verfügbarkeits-Status der Plattform
+- `knowmind_get_stats` — Statistik über gespeicherte Erinnerungen und Beziehungen
+- `knowmind_get_health` — Verfügbarkeits-Status der Plattform
+- `knowmind_upsert_entity` — Knoten für eine Sache anlegen (Person, Firma, Anwendung, Rechner, Technik) oder den vorhandenen zurückgeben
+- `knowmind_get_schema` — Welche Entitätsklassen und Beziehungstypen dieser Arbeitsbereich kennt
 
 Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden
 serverseitig automatisch mit angelegt. Hinweis: `knowmind upload` als
 CLI-Befehl läuft über die REST-Schnittstelle (`/api/documents`), nicht über MCP.
+
+
+### Die bisherigen Werkzeugnamen
+
+Sieben Werkzeuge haben am 12. September 2026 neue Namen bekommen, damit jeder
+Name dem Muster `knowmind_<verb>_<objekt>` folgt und sagt, ob er liest oder
+schreibt. Die bisherigen Namen antworten bis zum 31. März 2027 unverändert
+weiter und stehen weiter in der Discovery, als veraltet gekennzeichnet:
+
+| bisher | ab jetzt |
+| --- | --- |
+| `knowmind_recall` | `knowmind_recall_memories` |
+| `knowmind_health` | `knowmind_get_health` |
+| `knowmind_stats` | `knowmind_get_stats` |
+| `knowmind_schema` | `knowmind_get_schema` |
+| `knowmind_entity` | `knowmind_upsert_entity` |
+| `knowmind_link` | `knowmind_link_entities` |
+| `knowmind_unlink` | `knowmind_unlink_entities` |
+
+Aus `knowmind_entity` wurde `upsert` und nicht `get`: Das Werkzeug legt den
+Knoten an oder gibt den vorhandenen zurück. Sonst ändert sich nichts —
+dieselben Parameter, dasselbe Verhalten.
 
 ## Daten in Deutschland
 
