@@ -93,7 +93,7 @@ never sees another tenant's data.
 
 ### Reading
 
-**`knowmind_recall`** — Search your memory and get the passages that answer a
+**`knowmind_recall_memories`** — Search your memory and get the passages that answer a
 question, ranked. Combines keyword search, vector similarity and the knowledge
 graph, then reranks with a cross-encoder.
 `query` (string, required) · `k` (integer, default 5, max 20) · `hops` (integer,
@@ -110,7 +110,7 @@ then are returned even if they are no longer true.
 practice) · `k` (integer, default 5)
 *Usage:* "What was our pricing in March?" — answers from the state of that day,
 not today's.
-*Difference from `knowmind_recall`:* use `recall` for what is true now, and
+*Difference from `knowmind_recall_memories`:* use `recall` for what is true now, and
 `recall_at_time` for what was true then. Asking `recall` about the past returns
 today's facts.
 
@@ -124,15 +124,15 @@ directions.
 *Usage:* "What does this contract connect to?" before changing or superseding it.
 *Errors:* unknown id returns an error, not an empty list.
 
-**`knowmind_schema`** — The entity classes and relation types this workspace
+**`knowmind_get_schema`** — The entity classes and relation types this workspace
 accepts. No parameters.
-*Usage:* call it before `knowmind_entity` or `knowmind_link` to use a type the
+*Usage:* call it before `knowmind_upsert_entity` or `knowmind_link_entities` to use a type the
 server will accept, rather than inventing one.
 
-**`knowmind_stats`** — Size of the corpus: documents, chunks, entities, edges.
+**`knowmind_get_stats`** — Size of the corpus: documents, chunks, entities, edges.
 No parameters.
 
-**`knowmind_health`** — Whether the service and its stores are reachable. No
+**`knowmind_get_health`** — Whether the service and its stores are reachable. No
 parameters.
 *Usage:* a status line, or a check before a long ingest.
 
@@ -148,7 +148,7 @@ unit; it is not split.
 an access key. Store a pointer instead, not the secret.
 
 **`knowmind_upload_document`** — Store a longer text as a document. It is split
-into passages, embedded, and becomes searchable through `knowmind_recall`.
+into passages, embedded, and becomes searchable through `knowmind_recall_memories`.
 `content` (string, required) · `title` (string) · `source` (string) ·
 `relations` (array)
 *Usage:* meeting minutes, a specification, a handbook chapter.
@@ -164,32 +164,54 @@ keeps its validity window and stays auditable; nothing is deleted.
 supersede, so "what did we believe in July" stays answerable.
 *Errors:* unknown `target_id` is rejected.
 
-**`knowmind_entity`** — Create or update a typed entity (a person, a company, a
+**`knowmind_upsert_entity`** — Create or update a typed entity (a person, a company, a
 product) with aliases.
 `name` (string, required) · `entity_class` (string, required — see
-`knowmind_schema`) · `description` (string) · `aliases` (array of strings)
+`knowmind_get_schema`) · `description` (string) · `aliases` (array of strings)
 *Usage:* give "ACME Ltd." its aliases so a question about "ACME" finds it.
 *Errors:* a class outside the schema is rejected.
 
-**`knowmind_link`** — Create a typed edge between two entries, with a confidence
+**`knowmind_link_entities`** — Create a typed edge between two entries, with a confidence
 value.
 `from_id` (string, required) · `to_id` (string, required) · `rel_type` (string,
-required — see `knowmind_schema`) · `confidence` (number 0–1)
+required — see `knowmind_get_schema`) · `confidence` (number 0–1)
 *Usage:* connect a contract to the client it belongs to. The inverse edge is
 created for you.
 
-**`knowmind_unlink`** — Remove a typed edge.
+**`knowmind_unlink_entities`** — Remove a typed edge.
 `from_id`, `to_id`, `rel_type` (all required)
 *Usage:* an edge created in error. The entries themselves stay.
 
 ### On deleting
 
 There is no delete tool, and that is deliberate. Facts are superseded
-(`knowmind_update_fact`), edges are removed (`knowmind_unlink`), and the history
+(`knowmind_update_fact`), edges are removed (`knowmind_unlink_entities`), and the history
 stays auditable. Deleting an entire workspace including its data is a
 self-service action in the web interface at
 [knowmind.de](https://knowmind.de) — it is not something an agent should be able
 to do by calling a tool.
+
+
+### Older tool names
+
+Seven tools were renamed on 12 September 2026 so that every name follows
+`knowmind_<verb>_<object>` and says whether it reads or writes. The previous
+names keep answering unchanged until 31 March 2027 and still appear in
+discovery, marked as deprecated:
+
+| until now | from now on |
+| --- | --- |
+| `knowmind_recall` | `knowmind_recall_memories` |
+| `knowmind_health` | `knowmind_get_health` |
+| `knowmind_stats` | `knowmind_get_stats` |
+| `knowmind_schema` | `knowmind_get_schema` |
+| `knowmind_entity` | `knowmind_upsert_entity` |
+| `knowmind_link` | `knowmind_link_entities` |
+| `knowmind_unlink` | `knowmind_unlink_entities` |
+
+`knowmind_entity` became `upsert`, not `get`: it creates the node or returns
+the existing one. Nothing else about the tools changed — same parameters,
+same behaviour.
 
 ### Discovery
 
