@@ -31,7 +31,52 @@ jobs:
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
       - name: server.json validieren
         run: ./mcp-publisher validate
+      - name: Steht die Fassung schon im Verzeichnis?
+        # Der Ablauf hat zwei Auslöser, und am 07.09.2026 liefen beide zehn
+        # Minuten auseinander für dieselbe Fassung: erst von Hand, dann über
+        # das Versionsmerkmal. Der zweite Lauf bekam 400 „cannot publish
+        # duplicate version" und färbte den Ablauf rot — elf Tage lang stand
+        # dort ein rotes Kreuz für einen Vorgang, der gelungen war.
+        #
+        # Rückgabe 0 heißt „steht schon da", alles andere heißt
+        # veröffentlichen. Auch der Abbruch (2, Verzeichnis antwortet nicht)
+        # führt zum Veröffentlichen: Wer bei einer unbeantworteten Abfrage
+        # übergeht, verpasst eine Veröffentlichung und merkt es nie.
+        id: abfrage
+        run: |
+          if node scripts/registry-fassung-vorhanden.mjs; then
+            echo "schon_dort=ja" >> "$GITHUB_OUTPUT"
+          else
+            echo "schon_dort=nein" >> "$GITHUB_OUTPUT"
+          fi
       - name: Login (GitHub OIDC)
+        if: steps.abfrage.outputs.schon_dort == 'nein'
         run: ./mcp-publisher login github-oidc
       - name: In MCP-Registry publizieren
-        run: ./mcp-publisher publish
+        if: steps.abfrage.outputs.schon_dort == 'nein'
+        # Zweites Netz: Fällt die Vorabfrage falsch aus — etwa weil das
+        # Verzeichnis zwischen Abfrage und Veröffentlichung einen anderen Stand
+        # zeigt —, ist der Doppelversuch kein Fehlschlag des Laufs. Jede andere
+        # Fehlermeldung bleibt einer.
+        run: |
+          set +e
+          AUSGABE=$(./mcp-publisher publish 2>&1)
+          RUECK=$?
+          echo "$AUSGABE"
+          if [ "$RUECK" -eq 0 ]; then
+            exit 0
+          fi
+          case "$AUSGABE" in
+            *"cannot publish duplicate version"*)
+              echo "Diese Fassung stand bereits im Verzeichnis. Nichts zu tun."
+              exit 0
+              ;;
+          esac
+          exit "$RUECK"
+      - name: Was der Lauf getan hat
+        run: |
+          if [ "${{ steps.abfrage.outputs.schon_dort }}" = "ja" ]; then
+            echo "Die Fassung aus server.json stand bereits im Verzeichnis — nichts veröffentlicht."
+          else
+            echo "Fassung veröffentlicht."
+          fi
