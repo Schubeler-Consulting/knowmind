@@ -1,5 +1,13 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.8 (2026-10-08)
+
+- Die mitgelieferte Werkzeugliste trägt den Stand des Servers vom 8. Oktober:
+  die Werkzeugnamen nach dem Muster Verb und Gegenstand
+  (`knowmind_recall_memories`, `knowmind_get_schema` …) und die Kennzeichnung,
+  welche Werkzeuge nur lesen und welche Daten ersetzen oder entfernen.
+- Die README nennt die neuen Werkzeugnamen.
+
 ## 0.3.7 (2026-09-07)
 
 - Veröffentlichung über GitHub Actions: Das Paket wird ohne dauerhaften Token
