@@ -62,6 +62,29 @@ function saveManifest(path, manifest) {
   writeFileSync(path, JSON.stringify(manifest, null, 2));
 }
 
+/** `name:` aus dem Frontmatter — die stabile Kennung einer Memory-Datei, unabhängig vom Dateinamen. */
+export function frontmatterName(content) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
+  if (!m) return null;
+  const z = /^name:\s*(.+?)\s*$/m.exec(m[1]);
+  return z ? z[1].replace(/^["']|["']$/g, "") : null;
+}
+
+/**
+ * Vorgänger einer Datei, deren Pfad das Manifest nicht kennt: ein Eintrag,
+ * dessen Datei es nicht mehr gibt und der dieselbe Sache ist — gleicher
+ * Frontmatter-Name oder, ohne Namen, gleicher Inhalt. So bleibt eine
+ * umbenannte Datei dasselbe Dokument (B3, 10.10.2026: fünf Paare aus
+ * Bindestrich gegen Unterstrich).
+ */
+export function vorgaengerFinden(manifest, rel, name, hash, gibtEs) {
+  for (const [alt, eintrag] of Object.entries(manifest.files)) {
+    if (alt === rel || !eintrag?.documentId || gibtEs(alt)) continue;
+    if (name ? eintrag.name === name : eintrag.sha256 === hash) return alt;
+  }
+  return null;
+}
+
 function deriveTitle(content, filePath) {
   const m = content.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
@@ -94,10 +117,21 @@ export async function syncDirectory(dir, options = {}) {
     if (basename(file) === MANIFEST_NAME) continue;
     const content = readFileSync(file, "utf-8");
     const hash = sha256(content);
-    const known = manifest.files[rel];
+    const name = frontmatterName(content);
+    let known = manifest.files[rel];
+    let umbenanntVon = null;
+    if (!known) {
+      umbenanntVon = vorgaengerFinden(manifest, rel, name, hash, (r) => existsSync(join(dir, r)));
+      if (umbenanntVon) known = { ...manifest.files[umbenanntVon], sha256: null };
+    }
 
     if (known && known.sha256 === hash) {
       skipped += 1;
+      // Name nachtragen (das Manifest wird am Ende gespeichert), damit eine
+      // spätere Umbenennung erkannt wird.
+      if (name && known.name !== name) {
+        known.name = name;
+      }
       if (options.verbose) console.log(`  skip  ${rel}`);
       continue;
     }
@@ -106,6 +140,7 @@ export async function syncDirectory(dir, options = {}) {
     try {
       const result = await uploadDocument(title, content, {
         replaceDocumentId: known?.documentId ?? undefined,
+        sourcePath: rel,
       });
       uploaded += 1;
       // Server antwortet bei sha-identischem Inhalt mit unchanged:true
@@ -116,13 +151,15 @@ export async function syncDirectory(dir, options = {}) {
         documentId: result.id ?? null,
         lastSync: new Date().toISOString(),
         duplicate: isDuplicate,
+        ...(name ? { name } : {}),
       };
+      if (umbenanntVon) delete manifest.files[umbenanntVon];
       // Manifest nach JEDEM erfolgreichen Upload speichern (2026-06-10):
       // Der Stop-Hook killt den Sync nach 120 s — mit 10er-Batches gingen
       // Manifest-Stände verloren und identischer Inhalt wurde endlos
       // re-POSTet (Ursache der Ingest-500-Schleife 26.–27.05.).
       saveManifest(manifestPath, manifest);
-      const flag = isDuplicate ? "dup " : "new ";
+      const flag = umbenanntVon ? "ren " : isDuplicate ? "dup " : "new ";
       process.stdout.write(`  [${scanned}/${total}] ${flag} ${rel}\n`);
     } catch (e) {
       failed += 1;
