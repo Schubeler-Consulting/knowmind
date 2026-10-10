@@ -118,6 +118,9 @@ export async function uploadDocument(title, content, opts = {}) {
   // documentId, geht sie als replaceDocumentId mit — der Server ersetzt damit
   // genau diese Alt-Version, titelunabhaengig (verhindert Titel-Dubletten).
   if (opts.replaceDocumentId) body.replaceDocumentId = opts.replaceDocumentId;
+  // Quelldatei relativ zum Ordner: Der Server findet darüber die Fassung
+  // derselben Datei, auch wenn sich der Titel geändert hat.
+  if (opts.sourcePath) body.sourcePath = opts.sourcePath;
 
   const r = await fetch(`${apiUrl}/api/documents`, {
     method: "POST",
