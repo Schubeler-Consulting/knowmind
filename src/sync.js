@@ -12,7 +12,7 @@
  */
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { join, relative, basename, extname } from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { uploadDocument } from "./client.js";
 
 const DEFAULT_EXTENSIONS = [".md", ".markdown", ".txt"];
@@ -85,6 +85,12 @@ export function vorgaengerFinden(manifest, rel, name, hash, gibtEs) {
   return null;
 }
 
+/** Quellpfad am Server: Ordnerkennung aus dem Manifest plus relativer Pfad. */
+export function quellpfad(manifest, rel) {
+  if (!manifest.quelle) manifest.quelle = randomUUID();
+  return `${manifest.quelle}/${rel}`;
+}
+
 function deriveTitle(content, filePath) {
   const m = content.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
@@ -100,6 +106,10 @@ export async function syncDirectory(dir, options = {}) {
   const exts = options.extensions ?? DEFAULT_EXTENSIONS;
   const manifestPath = join(dir, MANIFEST_NAME);
   const manifest = loadManifest(manifestPath);
+  // Eigene Kennung je Ordner: Der Quellpfad am Server ist `<Kennung>/<Pfad>`,
+  // damit zwei Ordner mit je einer README.md im selben Arbeitsbereich
+  // getrennt bleiben. Der lokale Pfad selbst geht nicht hinaus.
+  if (!manifest.quelle) manifest.quelle = randomUUID();
 
   const files = [...walk(dir, exts)].sort();
   const total = files.length;
@@ -140,7 +150,7 @@ export async function syncDirectory(dir, options = {}) {
     try {
       const result = await uploadDocument(title, content, {
         replaceDocumentId: known?.documentId ?? undefined,
-        sourcePath: rel,
+        sourcePath: quellpfad(manifest, rel),
       });
       uploaded += 1;
       // Server antwortet bei sha-identischem Inhalt mit unchanged:true

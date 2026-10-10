@@ -1,7 +1,7 @@
 // Umbenannte Datei bleibt dasselbe Dokument (B3, 10.10.2026).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { frontmatterName, vorgaengerFinden } from "./sync.js";
+import { frontmatterName, quellpfad, vorgaengerFinden } from "./sync.js";
 
 const manifest = {
   files: {
@@ -33,4 +33,12 @@ test("eine Datei, die es noch gibt, ist kein Vorgänger", () => {
 
 test("ein anderer Name ist kein Vorgänger", () => {
   assert.equal(vorgaengerFinden(manifest, "x.md", "etwas_anderes", "a1", nurNochDa), null);
+});
+
+test("zwei Ordner mit gleicher Datei bekommen verschiedene Quellpfade", () => {
+  const a = { files: {} };
+  const b = { files: {} };
+  assert.notEqual(quellpfad(a, "README.md"), quellpfad(b, "README.md"));
+  assert.equal(quellpfad(a, "README.md"), quellpfad(a, "README.md"), "Kennung bleibt je Manifest gleich");
+  assert.ok(quellpfad(a, "x/README.md").endsWith("/x/README.md"));
 });
