@@ -1,6 +1,6 @@
 {
   "_hinweis": "Rückfall für tools/list, wenn die Discovery nicht erreichbar ist. Erzeugt aus https://knowmind.de/api/mcp/v1. Abgleich: npm run tools:abgleich",
-  "stand": "2026-10-08",
+  "stand": "2026-10-10",
   "quelle": "https://knowmind.de/api/mcp/v1",
   "protocolVersion": "2025-06-18",
   "tools": [
@@ -363,7 +363,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Create a typed relation between two memory nodes (a knowledge-graph edge). THIS IS HOW THE GRAPH IS BUILT: after storing memories, connect them - a corpus without edges answers only what a single note already says. Subject and object classes must match the predicate; the inverse edge is materialized automatically, and derived edges (RUNS_ON, WORKS_FOR_CLIENT, HOST_SERVES_CLIENT, DEPENDS_ON_SUPPLIER) are computed by the server - never set them by hand. Get both node IDs via knowmind_recall first, and call knowmind_schema for the full catalogue with explanations. Allowed rel_type values: ABOUT (Contract|Document|FileResource → Topic), ASSIGNED_TO (ActionRecord|Task → Agent|Organization|Person|SoftwareAgent), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_ASSIGNED_TASK (Agent|Organization|Person|SoftwareAgent → ActionRecord|Task), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PREDECESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HAS_SUCCESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project). Requires write scope.",
+      "description": "Create a typed relation between two memory nodes (a knowledge-graph edge). THIS IS HOW THE GRAPH IS BUILT: after storing memories, connect them - a corpus without edges answers only what a single note already says. The server checks the edge against the ontology's shapes before writing it: the subject and object must belong to the classes the predicate requires (for entries without a class the check only warns), entity names must carry no role or suffix, and the edge must name its evidence - the id of the entry that states the relation. A rejected edge returns the violated rule. The inverse edge is materialized automatically, and derived edges (RUNS_ON, WORKS_FOR_CLIENT, HOST_SERVES_CLIENT, DEPENDS_ON_SUPPLIER) are computed by the server - never set them by hand. Get both node IDs via knowmind_recall first, and call knowmind_schema for the full catalogue with explanations. Allowed rel_type values: ABOUT (Contract|Document|FileResource → Topic), ASSIGNED_TO (ActionRecord|Task → Agent|Organization|Person|SoftwareAgent), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_ASSIGNED_TASK (Agent|Organization|Person|SoftwareAgent → ActionRecord|Task), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PREDECESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HAS_SUCCESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project). Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -382,12 +382,17 @@
           "confidence": {
             "type": "number",
             "description": "Edge confidence in [0..1]; 1.0 for a fact stated verbatim, 0.7 for a clear paraphrase. Below that, do not create the edge."
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Memory ID of the entry that states this relation (often from_id or a note found via knowmind_recall). Required: an edge without evidence is rejected."
           }
         },
         "required": [
           "from_id",
           "to_id",
-          "rel_type"
+          "rel_type",
+          "evidence"
         ]
       }
     },
@@ -459,6 +464,81 @@
         },
         "required": [
           "memory_id"
+        ]
+      }
+    },
+    {
+      "name": "knowmind_list_inferred",
+      "annotations": {
+        "title": "List inferred relations",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "List relations that wait for a human decision, each with its review state (open, confirmed, rejected) and its reason: inferred_from_text (knowmind inferred it from a text) or starts_from_document (it starts from a document although its kind needs a person, organisation or similar). Per relation also the two connected entries, where it came from (source), the entry that supports it (evidence), and the counts per state. Open relations do not feed the derivation rules until someone confirms them. Use to review what the graph learned on its own; record a decision with knowmind_review_inferred. Read scope suffices.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "confirmed",
+              "rejected"
+            ],
+            "description": "Only relations in this state. Omit for all."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50,
+            "description": "Number of relations to return (1-200, default 50)."
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Relations to skip, for paging."
+          }
+        }
+      }
+    },
+    {
+      "name": "knowmind_review_inferred",
+      "annotations": {
+        "title": "Review inferred relation",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "description": "Record a human decision on one inferred relation from knowmind_list_inferred. confirm: the relation counts as checked and feeds the derivation rules from now on. reject: the relation, its reverse relation and every relation derived from it get valid_to=now; nothing is deleted. undo: takes a rejection back and restores the reverse and derived relations. Pass the edge_id from the list and, if there is one, the id of the entry that supports the decision as evidence. Returns the state before and after and the number of reverse and derived relations affected. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "edge_id": {
+            "type": "string",
+            "description": "edge_id of the relation, as returned by knowmind_list_inferred."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "confirm",
+              "reject",
+              "undo"
+            ],
+            "description": "confirm, reject, or undo a rejection."
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Id of the entry that supports the decision. Optional."
+          }
+        },
+        "required": [
+          "edge_id",
+          "decision"
         ]
       }
     },
@@ -577,7 +657,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_link_entities. This name keeps answering unchanged until then. Create a typed relation between two memory nodes (a knowledge-graph edge). THIS IS HOW THE GRAPH IS BUILT: after storing memories, connect them - a corpus without edges answers only what a single note already says. Subject and object classes must match the predicate; the inverse edge is materialized automatically, and derived edges (RUNS_ON, WORKS_FOR_CLIENT, HOST_SERVES_CLIENT, DEPENDS_ON_SUPPLIER) are computed by the server - never set them by hand. Get both node IDs via knowmind_recall first, and call knowmind_schema for the full catalogue with explanations. Allowed rel_type values: ABOUT (Contract|Document|FileResource → Topic), ASSIGNED_TO (ActionRecord|Task → Agent|Organization|Person|SoftwareAgent), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_ASSIGNED_TASK (Agent|Organization|Person|SoftwareAgent → ActionRecord|Task), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PREDECESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HAS_SUCCESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project). Requires write scope.",
+      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_link_entities. This name keeps answering unchanged until then. Create a typed relation between two memory nodes (a knowledge-graph edge). THIS IS HOW THE GRAPH IS BUILT: after storing memories, connect them - a corpus without edges answers only what a single note already says. The server checks the edge against the ontology's shapes before writing it: the subject and object must belong to the classes the predicate requires (for entries without a class the check only warns), entity names must carry no role or suffix, and the edge must name its evidence - the id of the entry that states the relation. A rejected edge returns the violated rule. The inverse edge is materialized automatically, and derived edges (RUNS_ON, WORKS_FOR_CLIENT, HOST_SERVES_CLIENT, DEPENDS_ON_SUPPLIER) are computed by the server - never set them by hand. Get both node IDs via knowmind_recall first, and call knowmind_schema for the full catalogue with explanations. Allowed rel_type values: ABOUT (Contract|Document|FileResource → Topic), ASSIGNED_TO (ActionRecord|Task → Agent|Organization|Person|SoftwareAgent), CLIENT_OF (Agent|Organization|Person|SoftwareAgent → Organization), CONTACT_PERSON_FOR (Person → Organization), COVERED_BY (Topic → Contract|Document|FileResource), DELIVERED_AS (Application → Product), DELIVERED_BY (Product → Application), DEPENDS_ON (Application → Application), DEPLOYED_TO (Application → Container), DEVELOPED_BY (Application → Agent|Organization|Person|SoftwareAgent), DEVELOPS (Agent|Organization|Person|SoftwareAgent → Application), ENABLES (Application → Application), FOR_CLIENT (Project → Agent|Organization|Person|SoftwareAgent), HAS_ASSIGNED_TASK (Agent|Organization|Person|SoftwareAgent → ActionRecord|Task), HAS_CHILD (Person → Person), HAS_CLIENT (Organization → Agent|Organization|Person|SoftwareAgent), HAS_CONTACT_PERSON (Organization → Person), HAS_EMPLOYEE (Organization → Person), HAS_OPERATED_APPLICATION (Agent|Organization|Person|SoftwareAgent → Application), HAS_PARENT (Person → Person), HAS_PREDECESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HAS_PROJECT (Agent|Organization|Person|SoftwareAgent → Project), HAS_ROLE (Person → Role), HAS_SIBLING (Person → Person), HAS_SKILL (Agent|Organization|Person|SoftwareAgent → Skill), HAS_SUCCESSOR (ActionRecord|Project|Task → ActionRecord|Project|Task), HOSTED_ON (Container → Host), HOSTS (Host → Container), HOSTS_APPLICATION (Container → Application), INFRASTRUCTURE_PROVIDED_BY (Host → Organization), INTEGRATES_WITH (Application → Application), IS_LED_BY (Organization → Person), KNOWS (Person → Person), LEADS (Person → Organization), OPERATED_FOR (Application → Agent|Organization|Person|SoftwareAgent), PAID_BY (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PARTNER_OF (Organization → Organization), PAYS (Agent|Organization|Person|SoftwareAgent → Agent|Organization|Person|SoftwareAgent), PRODUCED_BY (Contract|Document|FileResource → Project), PRODUCES (Project → Contract|Document|FileResource), PROVIDES_INFRASTRUCTURE (Organization → Host), ROLE_OF (Role → Person), SERVED_UNDER (Application → Domain), SERVES (Domain → Application), SKILL_OF (Skill → Agent|Organization|Person|SoftwareAgent), SPOUSE_OF (Person → Person), SUPPLIED_BY (Agent|Organization|Person|SoftwareAgent → Organization), SUPPLIES (Organization → Agent|Organization|Person|SoftwareAgent), SUPPLIES_TECHNOLOGY (Organization → Technology), SUPPORTED_BY (Contract|Document|FileResource → Contract|Document|FileResource), SUPPORTS (Contract|Document|FileResource → Contract|Document|FileResource), TECHNOLOGY_SUPPLIED_BY (Technology → Organization), TECHNOLOGY_USED_BY (Technology → Application), USES_TECHNOLOGY (Application → Technology), WORKED_ON_BY (Project → Agent|Organization|Person|SoftwareAgent), WORKS_FOR (Person → Organization), WORKS_ON (Agent|Organization|Person|SoftwareAgent → Project). Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -596,12 +676,17 @@
           "confidence": {
             "type": "number",
             "description": "Edge confidence in [0..1]; 1.0 for a fact stated verbatim, 0.7 for a clear paraphrase. Below that, do not create the edge."
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Memory ID of the entry that states this relation (often from_id or a note found via knowmind_recall). Required: an edge without evidence is rejected."
           }
         },
         "required": [
           "from_id",
           "to_id",
-          "rel_type"
+          "rel_type",
+          "evidence"
         ]
       }
     },

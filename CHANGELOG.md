@@ -1,5 +1,27 @@
 # Knowmind CLI — Änderungen
 
+## 0.3.9 (2026-10-10)
+
+**`knowmind sync` hält umbenannte Dateien zusammen**
+
+- Benennen Sie eine Datei um, bleibt sie dasselbe Dokument, statt als zweites
+  daneben zu erscheinen. `knowmind sync` erkennt sie, wenn die Datei unter dem
+  alten Namen nicht mehr da ist: am `name:` im Kopf der Datei, fehlt dieser, am
+  gleichen Inhalt.
+- Jeder Upload über `knowmind sync` nennt seine Quelldatei, als Kennung des
+  Ordners und Pfad darin; der vollständige Pfad auf Ihrem Rechner geht nicht
+  hinaus. Knowmind ordnet eine neue Fassung damit auch dann der alten zu, wenn
+  sich der Titel des Dokuments geändert hat. Zwei Ordner mit gleichnamigen
+  Dateien bleiben getrennt.
+- Die mitgelieferte Werkzeugliste trägt den Stand des Servers vom 10. Oktober.
+  Neu sind zwei Werkzeuge: `knowmind_list_inferred` listet Beziehungen, die
+  auf die Entscheidung eines Menschen warten; mit `knowmind_review_inferred`
+  bestätigen Sie eine solche Beziehung, lehnen sie ab oder nehmen eine Ablehnung
+  zurück.
+  `knowmind_link` und `knowmind_link_entities` verlangen jetzt einen Beleg
+  (`evidence`).
+- Verbesserungen der Stabilität.
+
 ## 0.3.8 (2026-10-08)
 
 - Die mitgelieferte Werkzeugliste trägt den Stand des Servers vom 8. Oktober:
