@@ -69,6 +69,42 @@ function memoryFirstBlock() {
   ].join("\n");
 }
 
+// ─── Hinweis in AGENTS.md (Codex und andere Agenten, seit 0.4.1) ─────
+// AGENTS.md liest ein Agent bei jeder Aufgabe. Der Block macht knowmind
+// deshalb zum Kontext auf Bedarf, nicht zur Pflichtlektüre, und hält fest,
+// dass Quellcode und Tests maßgeblich bleiben (Muster: der verwaltete Block
+// von OpenWiki, Abgleich 16.10.2026).
+function agentsBlock() {
+  return [
+    BEGIN,
+    "## knowmind",
+    "",
+    "Dieses Projekt ist mit **knowmind** verbunden, dem Gedächtnis für Entscheidungen,",
+    "Absprachen und Projektwissen (MCP-Server mit `knowmind_recall_memories` und",
+    "`knowmind_store_memory`).",
+    "",
+    "- Frag knowmind, wenn eine Aufgabe von früheren Entscheidungen, Absprachen oder",
+    "  Wissen außerhalb des Codes abhängt oder wenn der Nutzer danach fragt. Was der",
+    "  Code allein beantwortet, braucht keinen Abruf.",
+    "- Quellcode und Tests sind maßgeblich. Ein Treffer aus knowmind ist ein Hinweis,",
+    "  den du am Code prüfst, bevor du dich auf ihn stützt.",
+    "- An Treffern aus Seiten im Open Knowledge Format sagt `review_flags`, ob ein",
+    "  Treffer veraltet (`stale`), ungeprüft (`unverified`) oder überholt",
+    "  (`superseded`) ist, auch mehreres zugleich. Eine leere Liste heißt: nichts",
+    "  davon trifft zu.",
+    "- Halte Entscheidungen und Ergebnisse, die über diese Sitzung hinaus gelten, mit",
+    "  `knowmind_store_memory` fest. Zwischenstände und Wegwerfversuche gehören nicht",
+    "  hinein.",
+    END,
+  ].join("\n");
+}
+
+function planAgents(cwd) {
+  const pfad = join(cwd, "AGENTS.md");
+  const md = upsertMarkedBlock(pfad, agentsBlock());
+  return [{ label: "AGENTS.md (knowmind-Hinweis)", path: pfad, action: md.action, content: md.content }];
+}
+
 // ─── Generischer Hinweis-Text (manuell einfügbar) ────────────────────
 function manualSnippet() {
   return memoryFirstBlock();
@@ -727,14 +763,12 @@ export async function runInit({ client = "auto", dryRun = false, cwd = process.c
   for (const t of targets) {
     if (t === "claude-code") allActions.push(...planClaudeCode(cwd));
     else if (t === "cursor") allActions.push(...planCursor(cwd));
+    // Codex liest AGENTS.md im Projekt (seit 0.4.1 schreibt init den Block
+    // dort hinein; bis 0.4.0 zeigte es ihn nur an).
+    else if (t === "codex") allActions.push(...planAgents(cwd));
     else {
-      // generic / claude-desktop / codex und alles ohne Hook-Mechanismus.
-      const heading =
-        t === "codex"
-          ? "Codex CLI:"
-          : t === "claude-desktop"
-            ? "Claude Desktop:"
-            : "Generischer Client:";
+      // generic / claude-desktop und alles ohne Hook-Mechanismus.
+      const heading = t === "claude-desktop" ? "Claude Desktop:" : "Generischer Client:";
       lines.push(heading);
       lines.push("  Dieser Client kennt keinen Hook-Mechanismus, der die Pflege HART erzwingt.");
       lines.push("  Es wirken automatisch: die MCP-instructions (werden beim Verbinden gelesen)");
@@ -826,6 +860,7 @@ export const _internals = {
   ensureClaudeHookEntry,
   detectClients,
   memoryFirstBlock,
+  agentsBlock,
   BEGIN,
   END,
 };

@@ -23,6 +23,7 @@ import {
 import { loadConfig, saveConfig, configPath, VERSION } from "../src/config.js";
 import { runStdioServer } from "../src/mcp-stdio.js";
 import { syncDirectory } from "../src/sync.js";
+import { trefferKopf } from "../src/anzeige.js";
 import { runInit } from "../src/init.js";
 import { runInstall } from "../src/install.js";
 import { renderLine, renderFull, probe } from "../src/status.js";
@@ -52,7 +53,7 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
-  knowmind init [--client claude-code|cursor|auto] [--token kmt_TOKEN] [--api URL] [--dry-run]
+  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL] [--dry-run]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
                        --token/--api legen die Config gleich mit an.
@@ -185,9 +186,7 @@ async function runSearch() {
     return;
   }
   for (const [i, hit] of result.hits.entries()) {
-    const src = hit.metadata?.source_id ?? hit.chunk_id;
-    const name = hit.metadata?.name ?? src;
-    console.log(`\n#${i + 1}  ${name}  (score ${hit.score.toFixed(3)})`);
+    console.log(`\n${trefferKopf(hit, i)}`);
     console.log("  " + hit.content.slice(0, 280).replace(/\n/g, "\n  "));
   }
   console.log(`\n${result.hits.length} Treffer in ${result.latency_ms} ms.`);
