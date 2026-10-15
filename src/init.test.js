@@ -155,6 +155,69 @@ test("runInit cursor schreibt .mdc-Regel", async () => {
   rmSync(home, { recursive: true, force: true });
 });
 
+// ── AGENTS.md für Codex (seit 0.4.1) ──────────────────────────────
+// Bis 0.4.0 zeigte init den Block für Codex nur an; Codex liest aber
+// AGENTS.md im Projekt, und dort stand nichts.
+
+const zaehle = (text) => text.split(BEGIN).length - 1;
+
+test("runInit codex legt AGENTS.md mit dem Block an, wenn die Datei fehlt", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  const pfad = join(dir, "AGENTS.md");
+  assert.ok(existsSync(pfad));
+  const txt = readFileSync(pfad, "utf-8");
+  assert.equal(zaehle(txt), 1);
+  assert.match(txt, /Quellcode und Tests sind maßgeblich/);
+  assert.match(txt, /knowmind_recall_memories/);
+  assert.equal(existsSync(join(dir, "CLAUDE.md")), false, "für Codex keine CLAUDE.md");
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("runInit codex hängt an eine vorhandene AGENTS.md an und lässt ihren Text stehen", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  const pfad = join(dir, "AGENTS.md");
+  writeFileSync(pfad, "# Regeln\n\nTests mit `npm test` vor jedem Commit.\n");
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  const txt = readFileSync(pfad, "utf-8");
+  assert.ok(txt.startsWith("# Regeln\n\nTests mit `npm test` vor jedem Commit.\n"), "eigener Text bleibt vorn");
+  assert.equal(zaehle(txt), 1);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("runInit codex zweimal: kein doppelter Block, zweiter Lauf ändert nichts", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  const pfad = join(dir, "AGENTS.md");
+  writeFileSync(pfad, "# Regeln\n");
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  const erst = readFileSync(pfad, "utf-8");
+  const out = await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  assert.equal(readFileSync(pfad, "utf-8"), erst);
+  assert.equal(zaehle(erst), 1);
+  assert.match(out, /AGENTS\.md[\s\S]*bereits aktuell/);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("runInit codex ersetzt einen alten knowmind-Block, statt einen zweiten anzuhängen", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  const pfad = join(dir, "AGENTS.md");
+  writeFileSync(pfad, `# Regeln\n\n${BEGIN}\nalter Text\n${END}\n\nNachsatz.\n`);
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  const txt = readFileSync(pfad, "utf-8");
+  assert.equal(zaehle(txt), 1);
+  assert.doesNotMatch(txt, /alter Text/);
+  assert.match(txt, /Nachsatz\./);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
 test("runInit generic gibt manuellen Snippet aus, schreibt nichts", async () => {
   const dir = freshDir();
   const home = freshDir();

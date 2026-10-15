@@ -1,5 +1,20 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.1 (2026-10-16)
+
+- `knowmind search` zeigt bei Treffern aus Seiten im Open Knowledge Format die
+  Kennzeichen, die der Server vergibt, in eckigen Klammern hinter der
+  Bewertung (`score`): `stale`, wenn der Zeitpunkt erreicht ist, ab dem die
+  Seite als veraltet gilt; `unverified`, wenn keine Prüfung verzeichnet ist;
+  `superseded`, wenn die Seite als überholt markiert ist.
+- `knowmind init` schreibt den knowmind-Hinweis für Codex (mit `--client codex`
+  oder wenn es Codex erkennt) jetzt in die `AGENTS.md` des Projekts, die Codex
+  als Anweisung für das Projekt liest. Fehlt die Datei, legt `init` sie an; vorhandener
+  Text bleibt stehen, und ein zweiter Lauf ersetzt den Block, statt einen
+  weiteren anzuhängen. Der Hinweis nennt knowmind als Quelle für
+  Entscheidungen und Wissen außerhalb des Codes und hält fest, dass Quellcode
+  und Tests maßgeblich bleiben.
+
 ## 0.4.0 (2026-10-16)
 
 **`knowmind sync` übernimmt Wissen im Open Knowledge Format**
