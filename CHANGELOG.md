@@ -28,6 +28,9 @@
   Wurzel oder an den Verwaltungsdateien von OpenWiki. Findet `knowmind sync`
   keine solche Kennung, behandelt es den angegebenen Ordner mit `--okf`
   trotzdem als OKF-Bündel.
+- Die mitgelieferte Werkzeugliste trägt den Stand des Servers vom 16. Oktober.
+  Die Beschreibung von `hops` bei `knowmind_recall_memories` sagt jetzt, dass
+  der Wert den Abruf derzeit nicht verändert.
 
 ## 0.3.9 (2026-10-10)
 
