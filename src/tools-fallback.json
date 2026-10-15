@@ -1,6 +1,6 @@
 {
   "_hinweis": "Rückfall für tools/list, wenn die Discovery nicht erreichbar ist. Erzeugt aus https://knowmind.de/api/mcp/v1. Abgleich: npm run tools:abgleich",
-  "stand": "2026-10-10",
+  "stand": "2026-10-16",
   "quelle": "https://knowmind.de/api/mcp/v1",
   "protocolVersion": "2025-06-18",
   "tools": [
@@ -13,7 +13,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + graph hops) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Read scope suffices.",
+      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -33,7 +33,7 @@
             "minimum": 0,
             "maximum": 3,
             "default": 2,
-            "description": "Graph expansion depth over typed relations (0-3, default 2); 0 = text/vector only, no graph."
+            "description": "Accepted for compatibility (0-3, default 2); currently has no effect on recall."
           }
         },
         "required": [
@@ -551,7 +551,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + graph hops) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Read scope suffices.",
+      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -571,7 +571,7 @@
             "minimum": 0,
             "maximum": 3,
             "default": 2,
-            "description": "Graph expansion depth over typed relations (0-3, default 2); 0 = text/vector only, no graph."
+            "description": "Accepted for compatibility (0-3, default 2); currently has no effect on recall."
           }
         },
         "required": [
