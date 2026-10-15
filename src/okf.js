@@ -117,6 +117,18 @@ export function seitenCommit(seiten, rel) {
   return null;
 }
 
+/** Der dokumentierte Commit aus `.last-update.json` (OpenWiki), sonst null. */
+export function letzterStandLesen(wurzel) {
+  const pfad = join(wurzel, ".last-update.json");
+  if (!existsSync(pfad)) return null;
+  try {
+    const kopf = JSON.parse(readFileSync(pfad, "utf-8"))?.gitHead;
+    return typeof kopf === "string" ? kopf : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Die Seitenliste aus `.page-manifest.json` eines OpenWiki-Verzeichnisses, sonst null. */
 export function seitenListeLesen(wurzel) {
   const pfad = join(wurzel, ".page-manifest.json");

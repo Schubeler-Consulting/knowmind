@@ -16,7 +16,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { uploadDocument } from "./client.js";
 import {
   RESERVIERT, buendelWurzel, kopfLesen, belegeLesen, okfAngaben, seitenCommit, seitenListeLesen,
+  verifiziert, letzterStandLesen,
 } from "./okf.js";
+import { gitWurzel, seitenDrift } from "./belegdrift.js";
 
 const DEFAULT_EXTENSIONS = [".md", ".markdown", ".txt"];
 const MANIFEST_NAME = ".knowmind-manifest.json";
@@ -139,11 +141,32 @@ export function okfSeite(bundle, datei, inhalt) {
   if (bundle.openwiki && bundle.seiten === undefined) bundle.seiten = seitenListeLesen(bundle.wurzel);
   const commit = seitenCommit(bundle.seiten, rel);
   const angaben = okfAngaben({ kopf, inhalt, konzept, version: bundle.version, belege, commit });
+
+  // Belegdrift (0.4.2): die Belege gegen den Code im Repo rechnen, lokal mit git.
+  let drift = null;
+  if (angaben?.okf.claims && Array.isArray(belege?.daten?.claims)) {
+    if (bundle.git === undefined) bundle.git = gitWurzel(bundle.wurzel);
+    if (!bundle.git) drift = { ohneGit: true };
+    else {
+      if (bundle.letzterStand === undefined) bundle.letzterStand = letzterStandLesen(bundle.wurzel);
+      if (!bundle.merker) bundle.merker = new Map();
+      const zeiten = verifiziert(kopf?.verified).map((v) => Date.parse(v.at ?? "")).filter((t) => !Number.isNaN(t));
+      drift = seitenDrift({
+        wurzel: bundle.git,
+        ref: commit ?? bundle.letzterStand,
+        daten: belege.daten,
+        bestaetigtAm: zeiten.length ? Math.max(...zeiten) : null,
+        merker: bundle.merker,
+      });
+      if (drift.checked) angaben.okf.claims.drift = drift;
+    }
+  }
   return {
     angaben,
+    drift,
     titel: angaben && typeof kopf?.title === "string" && kopf.title.trim() ? kopf.title.trim() : null,
-    // Ändern sich nur die Belege, muss die Seite trotzdem neu hinaus.
-    belegeRoh: belege?.roh ?? "",
+    // Ändern sich nur die Belege oder der Code dahinter, muss die Seite trotzdem neu hinaus.
+    belegeRoh: (belege?.roh ?? "") + (drift?.checked ? "\0" + JSON.stringify(drift) : ""),
   };
 }
 
@@ -176,6 +199,7 @@ export async function syncDirectory(dir, options = {}) {
   let failed = 0;
   let okfSeiten = 0;
   let ausgelassen = 0;
+  const belegStand = { checked: 0, changed: 0, removed: 0, unknown: 0, ohneGit: false };
   const failures = [];
 
   console.log(`Knowmind sync: ${total} Dateien in ${dir}`);
@@ -193,6 +217,8 @@ export async function syncDirectory(dir, options = {}) {
       continue;
     }
     if (seite?.angaben) okfSeiten += 1;
+    if (seite?.drift?.ohneGit) belegStand.ohneGit = true;
+    else if (seite?.drift) for (const f of ["checked", "changed", "removed", "unknown"]) belegStand[f] += seite.drift[f];
     const hash = seite?.angaben ? sha256(content + "\0" + seite.belegeRoh) : sha256(content);
     const name = frontmatterName(content);
     let known = manifest.files[rel];
@@ -253,9 +279,18 @@ export async function syncDirectory(dir, options = {}) {
   if (okfSeiten || ausgelassen) {
     console.log(`OKF: ${okfSeiten} Seiten mit Herkunft und Prüfstand, ${ausgelassen} Verzeichnislisten und Verläufe ausgelassen.`);
   }
+  if (belegStand.checked) {
+    console.log(
+      `Belege gegen den Code: ${belegStand.checked} geprüft, ${belegStand.changed} geändert, ` +
+        `${belegStand.removed} mit entfernter Datei, ${belegStand.unknown} ohne bekannten Bezugsstand.`,
+    );
+  }
+  if (belegStand.ohneGit) {
+    console.log("Hinweis: Das Bündel liegt in keinem Git-Repository; die Belege wurden nicht gegen den Code geprüft.");
+  }
   if (failed > 0) {
     console.log(`Fehler-Übersicht (max 10):`);
     failures.slice(0, 10).forEach((f) => console.log(`  ${f.file}: ${f.error}`));
   }
-  return { uploaded, skipped, failed, failures, okfSeiten, ausgelassen };
+  return { uploaded, skipped, failed, failures, okfSeiten, ausgelassen, belegStand };
 }

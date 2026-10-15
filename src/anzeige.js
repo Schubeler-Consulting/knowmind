@@ -3,7 +3,8 @@
  *
  * Treffer aus Seiten im Open Knowledge Format tragen seit dem Serverstand vom
  * 16.10.2026 `metadata.review_flags`: `stale` (Verfallszeitpunkt erreicht),
- * `unverified` (keine Prüfung verzeichnet), `superseded` (überholt). Die
+ * `unverified` (keine Prüfung verzeichnet), `superseded` (überholt), seit 0.4.2
+ * `drifted` (belegter Code geändert). Die
  * Kopfzeile zeigt sie in eckigen Klammern; ohne Kennzeichen bleibt sie wie
  * bisher.
  */
