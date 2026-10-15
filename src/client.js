@@ -121,6 +121,9 @@ export async function uploadDocument(title, content, opts = {}) {
   // Quelldatei relativ zum Ordner: Der Server findet darüber die Fassung
   // derselben Datei, auch wenn sich der Titel geändert hat.
   if (opts.sourcePath) body.sourcePath = opts.sourcePath;
+  // Herkunft und Prüfstand einer OKF-Seite (okf.js): stehen danach an jedem
+  // Abschnitt, auch wenn der Server die Abschnitte selbst bildet.
+  if (opts.metadata) body.metadata = opts.metadata;
 
   const r = await fetch(`${apiUrl}/api/documents`, {
     method: "POST",

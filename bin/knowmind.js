@@ -61,9 +61,12 @@ Befehle:
                        Hybrid-Recall gegen den Tenant-Korpus
   knowmind upload <file> [--title "..."]
                        Markdown-/Text-Datei indexieren (stdin: knowmind upload -)
-  knowmind sync <dir>  [--ext .md,.txt] [--verbose] [--title-from-content]
+  knowmind sync <dir>  [--ext .md,.txt] [--verbose] [--title-from-content] [--okf]
                        Ordner mit dem Korpus abgleichen. Idempotent über
                        Content-Hash, Manifest in <dir>/.knowmind-manifest.json.
+                       Seiten im Open Knowledge Format (z. B. openwiki/) behalten
+                       Herkunft, Prüfstand und Verfallsdatum; --okf behandelt
+                       den Ordner als Bündel, auch ohne okf_version.
   knowmind stats       Memory- und Edge-Counter des Tenants
   knowmind health      Health-Check der Plattform
   knowmind status [--line]
@@ -218,6 +221,7 @@ async function runSync() {
     extensions: extFlag ? extFlag.split(",").map((e) => (e.startsWith(".") ? e : `.${e}`)) : undefined,
     verbose: args.includes("--verbose"),
     titleFromContent: args.includes("--title-from-content"),
+    okf: args.includes("--okf"),
   };
   const result = await syncDirectory(dir, options);
   if (result.failed > 0) process.exitCode = 3;

@@ -1,5 +1,34 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.0 (2026-10-16)
+
+**`knowmind sync` übernimmt Wissen im Open Knowledge Format**
+
+- Liegt in einem Ordner Wissen im Open Knowledge Format (OKF 0.1 oder 0.2),
+  etwa im Ordner `openwiki/`, den OpenWiki in einem Repository anlegt, liest
+  `knowmind sync` den Kopf jeder Seite mit.
+- Jeder Treffer der Suche trägt danach den Status der Seite (`status`, ohne
+  Angabe `stable`), die Vertrauensstufe nach OKF (`trust`: `unverified`,
+  `machine-confirmed` oder `human-reviewed`, also ungeprüft, maschinell
+  bestätigt oder von einem Menschen geprüft) und die Zahl der Quellen. Soweit
+  die Seite es angibt, kommen hinzu: wer oder was die Seite erzeugt hat
+  (`generated`), die letzten fünf Prüfungen (`verified`), der Zeitpunkt, ab dem
+  die Seite als veraltet gilt (`stale_after`), und die ersten zehn Quellen
+  (`sources`). Der vollständige Kopf bleibt Teil des Dokuments.
+- Der Zeitpunkt der letzten inhaltlichen Änderung (`generated.at`, bei OKF 0.1
+  `timestamp`) gilt als Beginn der Gültigkeit. `knowmind_recall_at_time`
+  zeigt die Seite deshalb erst ab diesem Zeitpunkt.
+- Belege unter `.claims/` werden gezählt, und knowmind vermerkt, ob sie zur
+  aktuellen Fassung der Seite gehören. Ändern sich nur die Belege, lädt
+  `knowmind sync` die Seite erneut hoch.
+- In einem solchen Ordner übernimmt `knowmind sync` die Verzeichnislisten
+  `index.md` und die Verläufe `log.md` nicht als Dokumente, ebenso wenig den
+  Arbeitsauftrag `INSTRUCTIONS.md` an der Wurzel eines OpenWiki-Ordners.
+- Erkannt wird ein solcher Ordner an `okf_version` in der `index.md` an seiner
+  Wurzel oder an den Verwaltungsdateien von OpenWiki. Findet `knowmind sync`
+  keine solche Kennung, behandelt es den angegebenen Ordner mit `--okf`
+  trotzdem als OKF-Bündel.
+
 ## 0.3.9 (2026-10-10)
 
 **`knowmind sync` hält umbenannte Dateien zusammen**

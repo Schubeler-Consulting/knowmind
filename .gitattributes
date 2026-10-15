@@ -1,0 +1,2 @@
+# Prüfdaten mit festen Prüfsummen: Bytes unverändert lassen, keine Zeilenende-Umwandlung.
+test/fixtures/** -text
