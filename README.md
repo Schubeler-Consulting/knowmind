@@ -84,7 +84,18 @@ npx -y knowmind upload notes.md --title "Meeting notes 2026-05-12"
 npx -y knowmind stats
 npx -y knowmind health
 npx -y knowmind status --line   # one-line status for your AI tool's statusline
+npx -y knowmind sync ./openwiki  # import a folder; keeps the review records of OKF pages
 ```
+
+### Knowledge in Open Knowledge Format
+
+`knowmind sync` reads folders in the Open Knowledge Format (OKF 0.1 and 0.2),
+such as the `openwiki/` folder that OpenWiki creates in a repository. Each page
+keeps its sources, who wrote it, who verified it, its status and its
+`stale_after` date. Every search hit carries these fields, together with the
+trust tier defined by OKF: unverified, machine-confirmed or human-reviewed.
+Directory listings (`index.md`) and logs (`log.md`) are not imported. Use
+`--okf` for a folder without `okf_version` in its root `index.md`.
 
 ## Available Tools
 

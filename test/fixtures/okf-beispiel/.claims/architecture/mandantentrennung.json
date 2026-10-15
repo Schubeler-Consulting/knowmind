@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:40579bb13aa77978cdd6c878a3fcd197d63ddc8ffa9c6731d914fad36566e5c2",
+  "claims": [
+    {
+      "id": "claim_1",
+      "statement": "Jede Abfrage läuft mit gesetzter Mandantenkennung.",
+      "evidence": [
+        {
+          "resource": "repo://src/mandant.ts#L10-L14",
+          "version": "repo-lines-v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "id": "claim_2",
+      "statement": "Buchungen schreibt ausschließlich src/buchung.ts.",
+      "evidence": [
+        {
+          "resource": "repo://src/buchung.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.0",
+    "at": "2026-10-14T08:05:30.000Z"
+  }
+}

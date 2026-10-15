@@ -11,9 +11,12 @@
  * und das Manifest aktualisiert.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
-import { join, relative, basename, extname } from "node:path";
+import { join, relative, basename, extname, dirname } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { uploadDocument } from "./client.js";
+import {
+  RESERVIERT, buendelWurzel, kopfLesen, belegeLesen, okfAngaben, seitenCommit, seitenListeLesen,
+} from "./okf.js";
 
 const DEFAULT_EXTENSIONS = [".md", ".markdown", ".txt"];
 const MANIFEST_NAME = ".knowmind-manifest.json";
@@ -91,6 +94,59 @@ export function quellpfad(manifest, rel) {
   return `${manifest.quelle}/${rel}`;
 }
 
+/**
+ * Findet zu einer Datei das OKF-Bündel, in dem sie liegt: den nächsten Ordner
+ * zwischen Datei und Sync-Wurzel, der ein Bündel ist (`okf.js`). Mit `--okf`
+ * gilt die Sync-Wurzel selbst als Bündel, auch ohne `okf_version`.
+ */
+export function buendelFinder(wurzel, erzwungen = false) {
+  const merker = new Map();
+  const ansehen = (ordner) => {
+    if (!merker.has(ordner)) {
+      const b = buendelWurzel(ordner);
+      merker.set(ordner, b ? { wurzel: ordner, ...b } : null);
+    }
+    return merker.get(ordner);
+  };
+  return (datei) => {
+    let ordner = dirname(datei);
+    for (;;) {
+      const b = ansehen(ordner);
+      if (b) return b;
+      const abstand = relative(wurzel, ordner);
+      if (abstand === "" || abstand.startsWith("..")) break;
+      const oben = dirname(ordner);
+      if (oben === ordner) break;
+      ordner = oben;
+    }
+    return erzwungen ? { wurzel, version: "unbekannt", openwiki: false } : null;
+  };
+}
+
+/**
+ * Was `knowmind sync` mit einer Datei in einem OKF-Bündel tut: auslassen
+ * (Verzeichnisliste, Verlauf, Arbeitsauftrag von OpenWiki) oder hochladen,
+ * dann mit den Angaben aus ihrem Kopf und ihren Belegen.
+ */
+export function okfSeite(bundle, datei, inhalt) {
+  const rel = relative(bundle.wurzel, datei).replace(/\\/g, "/");
+  if (RESERVIERT.has(basename(datei))) return { auslassen: "Verzeichnisliste oder Verlauf" };
+  // Der Arbeitsauftrag an den Schreibagenten von OpenWiki ist keine Seite.
+  if (bundle.openwiki && rel === "INSTRUCTIONS.md") return { auslassen: "Arbeitsauftrag von OpenWiki" };
+  const konzept = rel.replace(/\.md$/i, "");
+  const kopf = kopfLesen(inhalt);
+  const belege = belegeLesen(bundle.wurzel, konzept);
+  if (bundle.openwiki && bundle.seiten === undefined) bundle.seiten = seitenListeLesen(bundle.wurzel);
+  const commit = seitenCommit(bundle.seiten, rel);
+  const angaben = okfAngaben({ kopf, inhalt, konzept, version: bundle.version, belege, commit });
+  return {
+    angaben,
+    titel: angaben && typeof kopf?.title === "string" && kopf.title.trim() ? kopf.title.trim() : null,
+    // Ändern sich nur die Belege, muss die Seite trotzdem neu hinaus.
+    belegeRoh: belege?.roh ?? "",
+  };
+}
+
 function deriveTitle(content, filePath) {
   const m = content.match(/^#\s+(.+)$/m);
   if (m) return m[1].trim();
@@ -113,10 +169,13 @@ export async function syncDirectory(dir, options = {}) {
 
   const files = [...walk(dir, exts)].sort();
   const total = files.length;
+  const buendelVon = buendelFinder(dir, Boolean(options.okf));
   let scanned = 0;
   let uploaded = 0;
   let skipped = 0;
   let failed = 0;
+  let okfSeiten = 0;
+  let ausgelassen = 0;
   const failures = [];
 
   console.log(`Knowmind sync: ${total} Dateien in ${dir}`);
@@ -126,7 +185,15 @@ export async function syncDirectory(dir, options = {}) {
     const rel = relative(dir, file).replace(/\\/g, "/");
     if (basename(file) === MANIFEST_NAME) continue;
     const content = readFileSync(file, "utf-8");
-    const hash = sha256(content);
+    const bundle = buendelVon(file);
+    const seite = bundle ? okfSeite(bundle, file, content) : null;
+    if (seite?.auslassen) {
+      ausgelassen += 1;
+      if (options.verbose) console.log(`  omit  ${rel} (${seite.auslassen})`);
+      continue;
+    }
+    if (seite?.angaben) okfSeiten += 1;
+    const hash = seite?.angaben ? sha256(content + "\0" + seite.belegeRoh) : sha256(content);
     const name = frontmatterName(content);
     let known = manifest.files[rel];
     let umbenanntVon = null;
@@ -146,11 +213,14 @@ export async function syncDirectory(dir, options = {}) {
       continue;
     }
 
-    const title = options.titleFromContent ? deriveTitle(content, file) : basename(file, extname(file));
+    const title = options.titleFromContent
+      ? deriveTitle(content, file)
+      : seite?.titel ?? basename(file, extname(file));
     try {
       const result = await uploadDocument(title, content, {
         replaceDocumentId: known?.documentId ?? undefined,
         sourcePath: quellpfad(manifest, rel),
+        ...(seite?.angaben ? { metadata: seite.angaben } : {}),
       });
       uploaded += 1;
       // Server antwortet bei sha-identischem Inhalt mit unchanged:true
@@ -180,10 +250,12 @@ export async function syncDirectory(dir, options = {}) {
 
   saveManifest(manifestPath, manifest);
   console.log(`\nFertig: ${uploaded} hochgeladen, ${skipped} unverändert, ${failed} fehlerhaft.`);
+  if (okfSeiten || ausgelassen) {
+    console.log(`OKF: ${okfSeiten} Seiten mit Herkunft und Prüfstand, ${ausgelassen} Verzeichnislisten und Verläufe ausgelassen.`);
+  }
   if (failed > 0) {
     console.log(`Fehler-Übersicht (max 10):`);
     failures.slice(0, 10).forEach((f) => console.log(`  ${f.file}: ${f.error}`));
-    return { uploaded, skipped, failed, failures };
   }
-  return { uploaded, skipped, failed, failures };
+  return { uploaded, skipped, failed, failures, okfSeiten, ausgelassen };
 }

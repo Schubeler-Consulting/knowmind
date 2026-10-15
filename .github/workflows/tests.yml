@@ -1,0 +1,33 @@
+# Prüffälle der Kommandozeile bei jedem Push und Pull Request.
+#
+# Bis 0.3.9 lief kein Prüffall in der CI: Die Abläufe hier veröffentlichten
+# und glichen Manifeste ab, getestet wurde nur lokal. Seit 0.4.0 (OKF-Einlesen)
+# laufen die Fälle auf beiden unterstützten Node-Fassungen.
+
+name: Prüffälle
+
+on:
+  push:
+    branches: [master]
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Ohne Installationsskripte: Die Prüffälle brauchen das Einbettungsmodell
+      # nicht, sie laden im Servermodus gegen einen Prüfserver auf 127.0.0.1.
+      - run: npm ci --ignore-scripts
+      - run: npm test

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/mandantentrennung.md": {
+      "pageVersion": "sha256:40579bb13aa77978cdd6c878a3fcd197d63ddc8ffa9c6731d914fad36566e5c2",
+      "completedBy": "openwiki/0.7.0",
+      "gitHead": "1111111111111111111111111111111111111111",
+      "sourceFingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  }
+}

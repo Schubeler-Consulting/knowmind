@@ -66,6 +66,12 @@ jobs:
           fi
           echo "Fassung $PAKET"
 
+      - name: Prüffälle
+        # Was veröffentlicht wird, muss die Prüffälle bestehen (seit 0.4.0).
+        run: |
+          npm ci --ignore-scripts
+          npm test
+
       - name: Werkzeugliste gegen die Discovery abgleichen
         # Der mitgelieferte Rückfall veraltet, sobald der Server ein Werkzeug
         # bekommt. Eine Veröffentlichung mit veralteter Liste wäre schlimmer als
