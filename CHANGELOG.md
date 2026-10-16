@@ -1,5 +1,9 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.3 (2026-10-16)
+
+- Verbesserungen der Stabilität.
+
 ## 0.4.2 (2026-10-16)
 
 - Liegt ein Ordner im Open Knowledge Format mit Belegen unter `.claims/` in

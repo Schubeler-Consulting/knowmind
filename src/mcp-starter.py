@@ -98,7 +98,7 @@ def main() -> int:
             **_ohne_fenster(),
         )
     except FileNotFoundError:
-        sys.stderr.write(f"node nicht gefunden: {node}\n")
+        sys.stderr.write(f"knowmind: Befehl nicht gefunden: {befehl[0]}\n")
         return 127
 
     faeden = [
