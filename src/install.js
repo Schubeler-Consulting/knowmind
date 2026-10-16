@@ -258,6 +258,10 @@ function printClaudeCodeCommand(opts) {
   console.log("Für ein einzelnes Projekt stattdessen: knowmind install claude-code --project\n");
 }
 
+// Für die Prüffälle (src/starterpfad.test.js): Sie decken jeden Client ab, den
+// diese Liste kennt, auch einen, der später dazukommt.
+export const _internals = { IDES, serverEntry, mergeInto, mergeToml };
+
 // ── Hauptbefehl ─────────────────────────────────────────────────────────────
 export function runInstall(opts) {
   const { ideKey, project, dryRun, printOnly, apiUrl, literalToken } = opts;
