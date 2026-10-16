@@ -92,5 +92,10 @@ jobs:
 
       # End-Prüfung: MUSS grün sein, sonst roter Lauf -> GitHub mailt den Maintainer.
       # (package.json vor npm = Hinweis, kein Fehler -> Lauf bleibt grün.)
+      # Die Liste der Registry zieht nach einem Publish verzögert nach (bis zum
+      # 16.10.2026 der einzige Grund roter Läufe, CRM 99c79e7d). Deshalb wartet
+      # die Endkontrolle bis zu fünf Minuten, wenn allein die Registry hinterherhängt.
       - name: Endkontrolle
+        env:
+          REGISTRY_WARTEN_S: "300"
         run: node scripts/check-distribution.mjs

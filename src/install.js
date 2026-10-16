@@ -274,21 +274,30 @@ function meldung(ide, path, { ergebnis, sicherung }) {
   return `✓ ${ide.label}: knowmind-Eintrag in ${path} aktualisiert (Sicherung: ${sicherung})`;
 }
 
-function printClaudeCodeCommand(opts) {
+// Der Name steht vor den --env-Angaben. `-e, --env <env...>` nimmt beliebig
+// viele Werte; stand der Name dahinter (bis 0.4.4), las Claude Code ihn als
+// weitere Variable und brach ab: „Invalid environment variable format:
+// knowmind“ (gemessen 16.10.2026 mit Claude Code 2.1.301). So steht es auch im
+// Beispiel von `claude mcp add --help`: Name, dann -e, dann `--` und der Befehl.
+function claudeCodeBefehl(opts) {
   const tokenArg = opts.literalToken ? opts.literalToken : "$KNOWMIND_TOKEN";
-  console.log("Claude Code (User-Scope, alle Projekte) — diesen Befehl ausführen:\n");
-  console.log(
-    `  claude mcp add --scope user --transport stdio \\\n` +
-      `    --env KNOWMIND_TOKEN=${tokenArg} \\\n` +
-      `    --env KNOWMIND_API_URL=${opts.apiUrl} \\\n` +
-      `    knowmind -- npx -y knowmind mcp\n`,
+  return (
+    `  claude mcp add --scope user --transport stdio knowmind \\\n` +
+    `    --env KNOWMIND_TOKEN=${tokenArg} \\\n` +
+    `    --env KNOWMIND_API_URL=${opts.apiUrl} \\\n` +
+    `    -- npx -y knowmind mcp\n`
   );
+}
+
+function printClaudeCodeCommand(opts) {
+  console.log("Claude Code (User-Scope, alle Projekte) — diesen Befehl ausführen:\n");
+  console.log(claudeCodeBefehl(opts));
   console.log("Für ein einzelnes Projekt stattdessen: knowmind install claude-code --project\n");
 }
 
 // Für die Prüffälle (src/starterpfad.test.js, src/install.test.js): Sie decken
 // jeden Client ab, den diese Liste kennt, auch einen, der später dazukommt.
-export const _internals = { IDES, serverEntry, mergeInto, mergeToml, startBefehl, findePythonwFuerMcp };
+export const _internals = { IDES, serverEntry, mergeInto, mergeToml, startBefehl, findePythonwFuerMcp, claudeCodeBefehl };
 
 // ── Hauptbefehl ─────────────────────────────────────────────────────────────
 // `cwd` und `umgebung` nur für Prüffälle.

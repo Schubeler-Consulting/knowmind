@@ -7,6 +7,7 @@
  */
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -253,4 +254,47 @@ test("Stand des Starters passt zu seinem Inhalt", () => {
   const text = readFileSync(MITGELIEFERT, "utf-8").replace(/\r\n/g, "\n");
   const stand = starterStand(text);
   assert.equal(createHash("sha256").update(text).digest("hex"), SUMME_JE_STAND[stand], `Inhalt geändert, STARTER_STAND ${stand} nicht erhöht`);
+});
+
+// ── Claude Code: ausgegebener Befehl ────────────────────────────────────────
+function befehlZerlegen(text) {
+  return text.replace(/\\\r?\n/g, " ").trim().split(/\s+/);
+}
+
+test("Claude-Code-Befehl: Name vor den --env-Angaben, dann -- und npx", () => {
+  const teile = befehlZerlegen(_internals.claudeCodeBefehl({ apiUrl: "https://knowmind.de" }));
+  const name = teile.indexOf("knowmind");
+  const ersteEnv = teile.indexOf("--env");
+  const trenner = teile.indexOf("--");
+  assert.ok(name > 0 && name < ersteEnv, `Name steht hinter --env: ${teile.join(" ")}`);
+  assert.ok(teile.lastIndexOf("--env") < trenner, "--env hinter dem Trenner");
+  assert.deepEqual(teile.slice(trenner + 1), ["npx", "-y", "knowmind", "mcp"]);
+});
+
+test("Claude-Code-Befehl: Claude Code nimmt ihn an (nur wenn claude installiert ist)", (t) => {
+  const da = spawnSync("claude", ["--version"], { encoding: "utf-8", shell: process.platform === "win32" });
+  if (da.status !== 0) {
+    t.skip("claude nicht installiert");
+    return;
+  }
+  // Eigenes Konfigurationsverzeichnis und Projektbereich: Die echte
+  // Einrichtung des Rechners wird weder gelesen noch geschrieben.
+  const projekt = join(heim, "projekt-claude");
+  mkdirSync(projekt, { recursive: true });
+  const env = { ...process.env, CLAUDE_CONFIG_DIR: join(heim, "claude-konfig") };
+  const befehl = befehlZerlegen(_internals.claudeCodeBefehl({ apiUrl: "https://knowmind.de", literalToken: "kmt_probe" }))
+    .map((a) => (a === "user" ? "project" : a));
+  const r = spawnSync(befehl[0], befehl.slice(1), { cwd: projekt, env, encoding: "utf-8", shell: process.platform === "win32" });
+  assert.equal(r.status, 0, r.stderr || r.stdout);
+  const e = JSON.parse(readFileSync(join(projekt, ".mcp.json"), "utf-8")).mcpServers.knowmind;
+  assert.equal(e.command, "npx");
+  assert.deepEqual(e.args, ["-y", "knowmind", "mcp"]);
+  assert.deepEqual(e.env, { KNOWMIND_TOKEN: "kmt_probe", KNOWMIND_API_URL: "https://knowmind.de" });
+
+  // Gegenprobe: die Form bis 0.4.4 (Name hinter den --env-Angaben) lehnt Claude Code ab.
+  const alt = ["claude", "mcp", "add", "--scope", "project", "--transport", "stdio", "--env", "KNOWMIND_TOKEN=kmt_probe",
+    "--env", "KNOWMIND_API_URL=https://knowmind.de", "knowmind-alt", "--", "npx", "-y", "knowmind", "mcp"];
+  const g = spawnSync(alt[0], alt.slice(1), { cwd: projekt, env, encoding: "utf-8", shell: process.platform === "win32" });
+  assert.notEqual(g.status, 0, "die alte Form läuft durch, der Fall misst nichts");
+  assert.match(g.stderr + g.stdout, /Invalid environment variable format: knowmind-alt/);
 });

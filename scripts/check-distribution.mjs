@@ -44,7 +44,26 @@ async function registryLatest() {
 const cmp = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 
 const npmV = await npmLatest();
-const regV = await registryLatest();
+let regV = await registryLatest();
+
+// Warten auf die Registry (REGISTRY_WARTEN_S, nur Endkontrolle in CI).
+//
+// WARUM (16.10.2026, CRM 99c79e7d): Jeder rote Lauf seit dem 09.10. hatte
+// denselben Ablauf. Der Publish meldete „Successfully published“, und die
+// Endkontrolle eine halbe Sekunde später las aus der Liste der Registry noch
+// die alte Fassung als neueste. Ein bis zwei Minuten später war der Lauf grün.
+// Die Liste zieht nach dem Publish verzögert nach; das ist eine Reihenfolge,
+// keine Drift. Gewartet wird nur, wenn alles andere stimmt und allein die
+// Registry eine ältere Fassung meldet, und nur bis zur Frist.
+const wartenS = Number(process.env.REGISTRY_WARTEN_S || 0);
+if (wartenS > 0 && regV !== npmV && sj.version === npmV) {
+  const ende = Date.now() + wartenS * 1000;
+  while (regV !== npmV && Date.now() < ende) {
+    console.log(`  … MCP-Registry meldet ${regV ?? "nichts"}, warte auf ${npmV}`);
+    await new Promise((r) => setTimeout(r, 10000));
+    regV = await registryLatest();
+  }
+}
 
 const fehler = [];
 const warnung = [];
