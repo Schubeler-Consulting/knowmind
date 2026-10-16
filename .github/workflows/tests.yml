@@ -27,6 +27,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      # Dasselbe npm wie beim Veröffentlichen (publish-npm.yml, Node 22). Am
+      # 16.10.2026 waren die Prüffälle hier grün und im Veröffentlichungslauf
+      # rot, weil npm 12 die Ausgabe von `npm pack --json` geändert hatte.
+      - if: matrix.node == '22'
+        run: npm install -g npm@latest
       # Ohne Installationsskripte: Die Prüffälle brauchen das Einbettungsmodell
       # nicht, sie laden im Servermodus gegen einen Prüfserver auf 127.0.0.1.
       - run: npm ci --ignore-scripts

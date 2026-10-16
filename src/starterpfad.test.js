@@ -69,7 +69,9 @@ function paketBauen(ziel) {
     cwd: ziel, encoding: "utf-8", shell: true,
   });
   assert.equal(r.status, 0, `npm pack scheiterte: ${r.stderr}`);
-  const [{ filename, files }] = JSON.parse(r.stdout);
+  // npm bis 11 gibt eine Liste aus, npm 12 ein Objekt mit dem Paketnamen als Schlüssel.
+  const daten = JSON.parse(r.stdout);
+  const { filename, files } = Array.isArray(daten) ? daten[0] : Object.values(daten)[0];
   const t = spawnSync("tar", ["-xzf", filename], { cwd: ziel, encoding: "utf-8" });
   assert.equal(t.status, 0, `tar scheiterte: ${t.stderr}`);
   return { verzeichnis: join(ziel, "package"), dateien: files.map((f) => f.path) };
