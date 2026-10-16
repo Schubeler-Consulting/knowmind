@@ -33,6 +33,7 @@
  */
 import { readFileSync } from "node:fs";
 import { loadConfig, VERSION } from "./config.js";
+import { starterAblegen } from "./starter.js";
 import { createInterface } from "node:readline";
 
 /** Methoden, die lokal beantwortet werden (alles andere geht an den Server). */
@@ -192,6 +193,15 @@ function fallbackStand() {
 }
 
 export async function runStdioServer() {
+  // Der Starter unter ~/.knowmind/ (src/starter.js) bekommt den Stand dieser
+  // Fassung, falls er älter ist. Nur eine vorhandene Datei, nur nach oben, und
+  // ein Fehler hier hält den Server nicht auf.
+  try {
+    starterAblegen({ nurWennDa: true });
+  } catch {
+    // ohne Schreibrecht im Benutzerverzeichnis bleibt der alte Starter
+  }
+
   // Kein Token konfiguriert → Discovery-Modus: initialize/tools/list laufen
   // über die öffentliche Server-Discovery, tools/call verlangt Login.
   let discoveryMode = false;
