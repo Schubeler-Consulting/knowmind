@@ -1,5 +1,23 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.2 (2026-10-16)
+
+- Liegt ein Ordner im Open Knowledge Format mit Belegen unter `.claims/` in
+  einem Git-Repository, prüft `knowmind sync` jeden Beleg, der auf eine Datei
+  im Repository zeigt (`repo-lines-v1` für Zeilen, `repo-file-v1` für die ganze
+  Datei), gegen den letzten Commit. Haben sich die belegten Zeilen oder die
+  belegte Datei seit dem Stand geändert, gegen den die Seite geschrieben wurde,
+  oder gibt es die Datei nicht mehr, trägt die Seite danach im Abruf das
+  Kennzeichen `drifted`. Zeilen, die nur verschoben wurden, zählen nicht; eine
+  umbenannte Datei wird am neuen Ort verglichen.
+- Ist dieser Stand nicht bekannt oder fehlt er in der Historie, etwa in einem
+  flachen Klon, nennt `knowmind sync` das in seiner Ausgabe und setzt kein
+  Kennzeichen. Außerhalb eines Git-Repositorys gibt `knowmind sync` einen
+  Hinweis aus und prüft keine Belege.
+- Das Kennzeichen entfällt beim nächsten Lauf, sobald die Seite gegen den
+  aktuellen Stand neu geschrieben oder nach der Änderung erneut geprüft wurde.
+- `knowmind search` und der Hinweis in `AGENTS.md` nennen das neue Kennzeichen.
+
 ## 0.4.1 (2026-10-16)
 
 - `knowmind search` zeigt bei Treffern aus Seiten im Open Knowledge Format die

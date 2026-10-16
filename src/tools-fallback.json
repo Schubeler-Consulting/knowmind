@@ -13,7 +13,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded; an empty list means none applies. Read scope suffices.",
+      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -290,7 +290,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Time-travel recall: return only memories that were valid at a given instant (valid_from <= as_of <= valid_to, or still open). Answers 'what did the agent know on March 14?'. Use instead of knowmind_recall when the point in time matters; otherwise use knowmind_recall for the current truth. Passages from pages in Open Knowledge Format carry metadata.review_flags (stale, unverified, superseded); stale is judged against as_of. Read scope suffices.",
+      "description": "Time-travel recall: return only memories that were valid at a given instant (valid_from <= as_of <= valid_to, or still open). Answers 'what did the agent know on March 14?'. Use instead of knowmind_recall when the point in time matters; otherwise use knowmind_recall for the current truth. Passages from pages in Open Knowledge Format carry metadata.review_flags (stale, unverified, superseded, drifted); stale and superseded are judged against as_of. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -551,7 +551,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded; an empty list means none applies. Read scope suffices.",
+      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
