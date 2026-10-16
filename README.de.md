@@ -40,14 +40,15 @@ export KNOWMIND_API_URL=https://knowmind.de
 ## Befehle
 
 ```
-npx -y knowmind install <ide>       MCP-Server im KI-Client verdrahten (claude, cursor, vscode …)
-knowmind init                       Automatische Gedächtnis-Pflege im KI-Client einrichten
+npx -y knowmind install <ide>       # MCP-Server im KI-Client eintragen (install list zeigt alle Clients)
+knowmind init                       # automatische Gedächtnis-Pflege im KI-Client einrichten
 knowmind search "Wo läuft die OKR-App?"
 knowmind upload notizen.md --title "Meeting Notizen 2026-05-12"
+knowmind sync ./openwiki            # Ordner abgleichen, auch im Open Knowledge Format
 knowmind stats
 knowmind health
-knowmind status                     Lebenszeichen des Gedächtnisses (Report)
-knowmind status --line              Einzeilige Statusline für Ihr KI-Werkzeug
+knowmind status                     # Lebenszeichen des Gedächtnisses als Bericht
+knowmind status --line              # einzeilige Statusline für Ihr KI-Werkzeug
 knowmind config
 ```
 
@@ -58,40 +59,51 @@ automatisch ein (eine bereits vorhandene eigene Statusline bleibt unangetastet).
 
 ## Automatische Pflege einrichten (`knowmind init`)
 
-Damit Ihre KI knowmind selbsttätig pflegt — **Recall vor jeder Aufgabe**, **Sichern nach
-jeder sicherungswürdigen Runde** — richtet `knowmind init` die passenden Mechanismen für
-Ihren Client ein. Der Befehl erkennt den Client am Projekt- und Home-Verzeichnis
-(`.claude/`, `.cursor/`, `~/.codex/`) oder Sie wählen ihn explizit.
+Damit Ihre KI knowmind selbsttätig pflegt — in Claude Code **Recall vor jeder Aufgabe** und
+**Sichern nach jeder sicherungswürdigen Runde**, in Cursor und Codex als Regel für das Modell —
+richtet `knowmind init` die passenden Mechanismen für
+Ihren Client ein. Der Befehl erkennt den Client an `.claude/` im Projekt, `~/.claude.json` oder
+`~/.claude` (Claude Code), an `.cursor/` im Projekt oder `~/.cursor` (Cursor) und an
+`~/.codex/config.toml` (Codex), oder Sie wählen ihn explizit.
 
 ```
 knowmind init                          # Client automatisch erkennen
 knowmind init --client claude-code     # gezielt für Claude Code
 knowmind init --client cursor          # gezielt für Cursor
+knowmind init --client codex           # gezielt für Codex
 knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nichts)
 ```
 
 **Was eingerichtet wird:**
 
 - **Claude Code** — projektlokale Hooks in `.claude/`:
-  - *UserPromptSubmit* → ruft vor jeder inhaltlichen Frage `knowmind_recall_memories` auf und reicht die
-    Top-Treffer als Kontext nach (Memory-First, automatisch).
-  - *Stop* → erinnert die KI daran, mit `knowmind_store_memory` zu sichern, wenn die Runde
-    Sicherungswürdiges enthielt (Deploy/Commit, neue Regel, Entscheidung) und noch nichts
-    gespeichert wurde.
+  - *UserPromptSubmit* → fragt vor jeder inhaltlichen Frage knowmind ab und reicht die
+    besten Treffer als Kontext nach (Memory-First, automatisch).
+  - *Stop* → hält das Ende der Runde an und fordert die KI auf, mit `knowmind_store_memory` zu
+    sichern, wenn die Runde Sicherungswürdiges enthielt und noch nichts gespeichert wurde. Als
+    sicherungswürdig gelten Deploy oder Commit, eine neue Regel, eine Architekturentscheidung und
+    geänderter Code oder geänderte Konfiguration.
   - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
 - **Cursor** — `.cursor/rules/knowmind.mdc` mit der Memory-First-Regel (`alwaysApply`).
-- **Claude Desktop / Codex / generisch** — kein automatischer Hook-Mechanismus vorhanden;
-  der Befehl zeigt den Memory-First-Text zum manuellen Einfügen (siehe Grenze unten).
+- **Codex** — ein Block in `AGENTS.md` (mit Markern wie bei `CLAUDE.md`): knowmind fragen, wenn
+  eine Aufgabe von Entscheidungen, Absprachen oder Wissen außerhalb des Codes abhängt; Quellcode
+  und Tests bleiben maßgeblich; was über die Sitzung hinaus gilt, mit `knowmind_store_memory`
+  festhalten.
+- **Claude Desktop / generisch** — kein Hook-Mechanismus, der die Pflege erzwingt; es wirken die
+  MCP-instructions und die MCP-prompts, und der Befehl zeigt den Memory-First-Text zum manuellen
+  Einfügen (siehe Grenze unten).
 
 **Idempotent & nicht-destruktiv:** Ein zweiter Lauf erzeugt keine Duplikate
-(marker-/befehls-basierte Ersetzung); bestehende fremde Dateien und Hooks bleiben
-unangetastet. Mit `--dry-run` sehen Sie jede Aktion vorab.
+(marker-/befehls-basierte Ersetzung). Vorhandene fremde Hooks ändert init nicht. Eine vorhandene
+`CLAUDE.md` oder `AGENTS.md` bekommt den markierten Block angehängt, eine vorhandene
+`.claude/settings.json` die Hooks und die Statusline dazu. Trägt eine Datei den Namen einer
+knowmind-Datei, aber keinen Marker, wird sie übersprungen. Mit `--dry-run` sehen Sie jede Aktion vorab.
 
-> **Grenze der Automatik:** Eine *harte* Erzwingung der Pflege gibt es nur in Clients mit
-> Hook-/Rule-Mechanismus (Claude Code, Cursor). In Clients ohne solchen Mechanismus
-> (z. B. Claude Desktop, Codex CLI) greifen die **MCP-instructions** (werden beim
-> Verbinden gelesen) und die **MCP-prompts** — eine modellabhängige Steuerung ohne
-> technische Garantie.
+> **Grenze der Automatik:** Eine *harte* Erzwingung der Pflege gibt es nur in Claude Code,
+> dessen Hooks unabhängig vom Modell laufen. Die Regeldatei in Cursor und der Block in
+> `AGENTS.md` für Codex sind Anweisungen an das Modell, ebenso in allen übrigen Clients die
+> **MCP-instructions** (werden beim Verbinden gelesen) und die **MCP-prompts** — eine
+> modellabhängige Steuerung ohne technische Garantie.
 
 ## MCP-Server einrichten
 
@@ -103,7 +115,7 @@ knowmind ist ein MCP-Server (`npx -y knowmind mcp`, stdio). Token aus dem knowmi
 claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx --env KNOWMIND_API_URL=https://knowmind.de -- npx -y knowmind mcp
 ```
 
-**Claude Desktop / Cursor / Windsurf / Cline / Continue / Goose / Zed** (`claude_desktop_config.json`, `~/.cursor/mcp.json`, …)
+**Claude Desktop / Cursor / Windsurf / Gemini CLI** (`claude_desktop_config.json`, `~/.cursor/mcp.json`, …; Zed erwartet denselben Eintrag unter `context_servers`)
 ```json
 {
   "mcpServers": {
@@ -115,17 +127,23 @@ claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx --env KNOWMIND_API_URL=http
   }
 }
 ```
-> Windows-Hinweis: falls `npx` nicht direkt startet, `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`.
+> Windows-Hinweis: Besser `npx -y knowmind install <ide>`. Liegt `pythonw.exe` von Python 3.10 bis
+> 3.14 am üblichen Ort (`%LOCALAPPDATA%\Programs\Python\Python3…` oder `C:\Python3…`), starten die
+> eingetragenen Server ohne Konsolenfenster; Codex und der ausgegebene Befehl für Claude Code
+> nutzen `npx` direkt. Wer von Hand einträgt und `npx` nicht direkt startet,
+> nimmt `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`; Clients ohne eigene
+> Konsole öffnen dann bei jedem Werkzeugaufruf ein Fenster.
 
 **VS Code / GitHub Copilot** (`.vscode/mcp.json` — Top-Level `servers` + `inputs`)
 ```json
 {
-  "inputs": [{ "id": "knowmind_token", "type": "promptString", "description": "Knowmind API token", "password": true }],
+  "inputs": [{ "type": "promptString", "id": "knowmind-token", "description": "KNOWMIND_TOKEN", "password": true }],
   "servers": {
     "knowmind": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "knowmind", "mcp"],
-      "env": { "KNOWMIND_TOKEN": "${input:knowmind_token}", "KNOWMIND_API_URL": "https://knowmind.de" }
+      "env": { "KNOWMIND_TOKEN": "${input:knowmind-token}", "KNOWMIND_API_URL": "https://knowmind.de" }
     }
   }
 }
@@ -167,6 +185,8 @@ identisch mit dem Remote-Connector (`https://knowmind.de/api/mcp/v1`).
 - `knowmind_get_health` — Verfügbarkeits-Status der Plattform
 - `knowmind_upsert_entity` — Knoten für eine Sache anlegen (Person, Firma, Anwendung, Rechner, Technik) oder den vorhandenen zurückgeben
 - `knowmind_get_schema` — Welche Entitätsklassen und Beziehungstypen dieser Arbeitsbereich kennt
+- `knowmind_list_inferred` — Beziehungen, die auf eine Entscheidung warten (aus Text erschlossen oder von einem Dokument ausgehend), mit Prüfstand, Herkunft und Beleg
+- `knowmind_review_inferred` — Entscheidung zu einer solchen Beziehung festhalten: bestätigen, verwerfen (`valid_to` wird gesetzt, nichts gelöscht) oder Verwerfen zurücknehmen
 
 Inverse-Beziehungen (z. B. `IS_EMPLOYEE_OF` zu `HAS_EMPLOYEE`) werden
 serverseitig automatisch mit angelegt. Hinweis: `knowmind upload` als
@@ -206,11 +226,11 @@ ein Drittlandtransfer stattfinden, für den Sie als Verantwortlicher zuständig 
 
 ## Haftung & Nutzung (Disclaimer)
 
-- **Software:** Dieses Paket steht unter der **Apache-Lizenz 2.0** und wird „AS IS" ohne jegliche
+- **Software:** Dieses Paket steht unter der **Apache-Lizenz 2.0** und wird „AS IS“ ohne jegliche
   Gewährleistung bereitgestellt; die Haftung ist im Rahmen der Lizenz (Abschnitte 7 und 8)
   ausgeschlossen bzw. beschränkt. Siehe `LICENSE`.
 - **Eigenes Konto, eigener Token:** knowmind bündelt keine Zugangsdaten. Sie nutzen Ihren eigenen
-  knowmind.de-Account und API-Token. Anlegen: https://knowmind.de/dashboard/api-tokens
+  knowmind.de-Account und API-Token. Anlegen: https://knowmind.de/dashboard/tokens
 - **Eigene Kosten/Verbrauch:** Jede Nutzung (API-Anfragen, Token-/Kontingentverbrauch, ggf.
   modellbezogene Kosten) erfolgt über Ihren eigenen Account und auf Ihre Verantwortung. Verbrauch
   und Kosten sind im knowmind.de-Dashboard transparent einsehbar.

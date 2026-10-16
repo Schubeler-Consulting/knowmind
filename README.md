@@ -25,7 +25,7 @@ npx -y knowmind login --token kmt_xxxxxxxx
 claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx -- npx -y knowmind mcp
 ```
 
-**Cursor** (`~/.cursor/mcp.json`) — also works for Claude Desktop, Windsurf, Cline, Continue, Goose, and Zed with their respective config files:
+**Cursor** (`~/.cursor/mcp.json`) — the same `mcpServers` block works for Claude Desktop, Windsurf and Gemini CLI in their config files; Zed expects it under `context_servers`:
 ```json
 {
   "mcpServers": {
@@ -38,9 +38,13 @@ claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx -- npx -y knowmind mcp
 }
 ```
 
-**Any other MCP client**: knowmind is a standard MCP server over stdio (`npx -y knowmind mcp`). On Windows, if `npx` does not start directly, use `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`.
+**Any other MCP client**: knowmind is a standard MCP server over stdio (`npx -y knowmind mcp`). On Windows, `npx -y knowmind install <ide>` is the better way: if `pythonw.exe` from Python 3.10 to 3.14 sits in its default location (`%LOCALAPPDATA%\Programs\Python\Python3…` or `C:\Python3…`), the entries it writes start the server without a console window; Codex and the printed Claude Code command use `npx` directly. If you configure by hand and `npx` does not start directly, use `"command": "cmd"`, `"args": ["/c", "npx", "-y", "knowmind", "mcp"]`; clients without a console of their own then open a window with each tool call.
 
-`npx -y knowmind install <ide>` writes this configuration for you (e.g. `claude`, `cursor`, `vscode`), and `npx -y knowmind init` sets up automatic memory hygiene — recall before each task, store after each meaningful change — for clients with a hook or rule mechanism (Claude Code, Cursor).
+`npx -y knowmind install <ide>` writes this configuration for you, for example `cursor`, `vscode`, `windsurf`, `zed`, `claude-desktop`, `gemini` or `codex`; `npx -y knowmind install list` shows all clients. For Claude Code it prints the `claude mcp add` command instead, and `--project` writes `.mcp.json` in the current folder.
+
+Clients that cannot read the token from the environment get a placeholder to replace with your token. Running `install` again updates only the knowmind entry and keeps a token you entered; before it changes a file, it saves a copy next to it.
+
+`npx -y knowmind init` sets up memory hygiene in your client: hooks in Claude Code that recall before each task and, when a turn contained something worth keeping (a deploy or commit, a new rule, an architecture decision, changed code or configuration) and nothing was stored yet, ask the model to store it before the turn ends, a rule file in Cursor, and a block in `AGENTS.md` that tells Codex when to ask knowmind and what to keep.
 
 ## How knowmind stores facts
 
@@ -107,7 +111,7 @@ sync as a bundle.
 
 ## Available Tools
 
-Thirteen tools over MCP. Every one works against your own workspace; the server
+Fifteen tools over MCP. Every one works against your own workspace; the server
 never sees another tenant's data.
 
 ### Reading
@@ -147,6 +151,15 @@ directions.
 accepts. No parameters.
 *Usage:* call it before `knowmind_upsert_entity` or `knowmind_link_entities` to use a type the
 server will accept, rather than inventing one.
+
+**`knowmind_list_inferred`** — Relations that wait for a human decision: relations knowmind
+inferred from a text, and relations that start from a document although their type needs a
+person, organisation or similar. Each comes with its review state, both connected entries, its
+source and the entry that supports it.
+`status` (`open`, `confirmed` or `rejected`, optional) · `limit` (integer, default 50, max 200) ·
+`offset` (integer, default 0)
+*Usage:* review what the graph learned on its own. Open relations do not feed the derivation
+rules until someone confirms them.
 
 **`knowmind_get_stats`** — Size of the corpus: documents, chunks, entities, edges.
 No parameters.
@@ -200,6 +213,15 @@ created for you.
 **`knowmind_unlink_entities`** — Remove a typed edge.
 `from_id`, `to_id`, `rel_type` (all required)
 *Usage:* an edge created in error. The entries themselves stay.
+
+**`knowmind_review_inferred`** — Record a decision on one relation from
+`knowmind_list_inferred`. `confirm` lets it feed the derivation rules; `reject` ends the
+relation, its reverse and every relation derived from it (`valid_to` is set, nothing is
+deleted); `undo` takes a rejection back.
+`edge_id` (string, required) · `decision` (`confirm`, `reject` or `undo`, required) ·
+`evidence` (string, optional — id of the entry that supports the decision)
+*Usage:* after reviewing the list. Returns the state before and after and how many reverse and
+derived relations were affected.
 
 ### On deleting
 

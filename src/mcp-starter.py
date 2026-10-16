@@ -34,6 +34,10 @@ import subprocess
 import sys
 import threading
 
+# Stand dieses Starters. Bei jeder Änderung an dieser Datei um eins erhöhen:
+# install legt eine Kopie unter ~/.knowmind/ ab (src/starter.js), und nur ein
+# höherer Stand ersetzt sie. src/starterpfad.test.js hält Stand und Inhalt fest.
+STARTER_STAND = 3
 
 
 def pumpe(quelle, ziel) -> None:
