@@ -1,5 +1,9 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.6 (2026-11-01)
+
+- Verbesserungen der Stabilität.
+
 ## 0.4.5 (2026-10-16)
 
 - Verbesserungen der Stabilität.
