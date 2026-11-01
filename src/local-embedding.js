@@ -16,6 +16,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { mkdirSync, existsSync } from "node:fs";
+import { zerlegen } from "./ueberschriftenschnitt.js";
 
 const MODEL_ID = process.env.KNOWMIND_EMBED_MODEL || "Xenova/multilingual-e5-large";
 const TARGET_DIM = 1024;
@@ -52,14 +53,12 @@ export async function warmup() {
 }
 
 /**
- * Zerlegt Text in Chunks identisch zum Server-Default (1200 Zeichen).
+ * Zerlegt Text in Chunks wie der Server: Markdown ein Ausschnitt je
+ * Abschnitt, anderer Text alle 1200 Zeichen (./ueberschriftenschnitt.js).
+ * Leerer Text ergibt wie bisher einen leeren Ausschnitt.
  */
 export function chunkText(text, size = CHUNK_TARGET) {
-  const out = [];
-  for (let i = 0; i < text.length; i += size) {
-    const seg = text.slice(i, i + size);
-    if (seg.trim()) out.push(seg);
-  }
+  const out = zerlegen(text, size);
   return out.length > 0 ? out : [""];
 }
 
