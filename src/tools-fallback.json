@@ -1,6 +1,6 @@
 {
   "_hinweis": "Rückfall für tools/list, wenn die Discovery nicht erreichbar ist. Erzeugt aus https://knowmind.de/api/mcp/v1. Abgleich: npm run tools:abgleich",
-  "stand": "2026-10-16",
+  "stand": "2026-11-01",
   "quelle": "https://knowmind.de/api/mcp/v1",
   "protocolVersion": "2025-06-18",
   "tools": [
@@ -13,7 +13,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. Read scope suffices.",
+      "description": "Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. When kein_belastbarer_treffer is true, the corpus most likely holds no answer; unless the hits clearly answer the question, say so. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -103,7 +103,7 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Store durable insights the moment they arise - decisions, preferences, facts, results, appointments. Persists one memory entry in the tenant corpus (Postgres + vector index + graph node), afterwards findable via knowmind_recall and knowmind_list_recent. Append-only: the same title replaces nothing (use knowmind_update_fact to supersede); sha-identical content is detected as idempotent (unchanged). Returns the new memory id. Use for a single short fact; for long or multi-fact text use knowmind_upload_document. GIVE THE EDGES ALONG: whatever the text says about people, organisations, projects, hosts or technologies belongs into `relations` in THIS call - name the counterpart, the server creates its node and the edge, no second call needed. A memory without edges is a note; with edges it becomes a graph that answers questions nobody wrote down. Use knowmind_link separately only to connect two entries that already exist. ENTRIES ARE NEVER HARD-DELETED, they are superseded: correct a fact with knowmind_update_fact, remove an edge with knowmind_unlink_entities. Both keep the history auditable, which is the point of this store - what was true when, and when that changed. Requires write scope.",
+      "description": "Store durable insights the moment they arise - decisions, preferences, facts, results, appointments. Persists one memory entry in the tenant corpus (Postgres + vector index + graph node), afterwards findable via knowmind_recall and knowmind_list_recent. Always creates a new entry; an earlier entry with the same title stays valid, because titles do not identify entries here (to supersede, use knowmind_update_fact, or knowmind_upload_document, which replaces by title); sha-identical content is detected as idempotent (unchanged). Returns the new memory id. Use for a single short fact; for long or multi-fact text use knowmind_upload_document. GIVE THE EDGES ALONG: whatever the text says about people, organisations, projects, hosts or technologies belongs into `relations` in THIS call - name the counterpart, the server creates its node and the edge, no second call needed. A memory without edges is a note; with edges it becomes a graph that answers questions nobody wrote down. Use knowmind_link separately only to connect two entries that already exist. ENTRIES ARE NEVER HARD-DELETED, they are superseded: correct a fact with knowmind_update_fact, remove an edge with knowmind_unlink_entities. Both keep the history auditable, which is the point of this store - what was true when, and when that changed. Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -189,13 +189,13 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Ingest a longer text as one document into the tenant corpus: chunk splitting, embeddings, vector chunks and graph nodes. Upsert-by-title: if a document with the same title exists, the new version replaces the old one (server default). Use for long-form or multi-fact content (a report, a page, a doc); for a single short fact use knowmind_store_memory. Returns the document id and the number of chunks written. AFTER INGESTING: extract the facts the text states about people, organisations, projects, products, technologies and hosts, and create the corresponding edges via knowmind_link. Requires write scope.",
+      "description": "Ingest a longer text as one document into the tenant corpus: chunk splitting, embeddings, vector chunks and graph nodes. Upsert-by-title (server default): if a valid document with the same title exists in the same domain, the new version supersedes it; the old version stays retrievable via knowmind_recall_at_time, and the superseded ids come back in replaced_document_ids. If the same text already exists in another valid document of the same domain, no new document is created and the response carries deduplicated. Use for long-form or multi-fact content (a report, a page, a doc); for a single short fact use knowmind_store_memory. Returns the document id and the number of chunks written. AFTER INGESTING: extract the facts the text states about people, organisations, projects, products, technologies and hosts, and create the corresponding edges via knowmind_link. Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "description": "Document title. Acts as the upsert key - an existing document with the same title is replaced."
+            "description": "Document title. Unless replace is false, it identifies the document: a valid document with the same title in the same domain is superseded and stays retrievable via knowmind_recall_at_time."
           },
           "content": {
             "type": "string",
@@ -203,7 +203,11 @@
           },
           "source": {
             "type": "string",
-            "description": "Origin - URL or file path. Free text, stored for provenance."
+            "description": "Origin, a URL or file path. Free text appended to the content for provenance; it does not decide which document is superseded."
+          },
+          "replace": {
+            "type": "boolean",
+            "description": "Default on knowmind.de: true, supersede the valid document with the same title in the same domain. false: store as a new document next to it."
           },
           "relations": {
             "type": "array",
@@ -282,6 +286,37 @@
       }
     },
     {
+      "name": "knowmind_end_fact",
+      "annotations": {
+        "title": "End fact",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "description": "End an entry that no longer applies and that nothing replaces (a project closed, a source withdrawn): the entry gets valid_to (now, or the given time) and drops out of knowmind_recall, while knowmind_recall_at_time before that time still finds it. Nothing is deleted and no new entry is created. When a newer statement replaces the entry, use knowmind_update_fact instead. Calling it again changes nothing. Requires write scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "ID of the entry to end; get it via knowmind_recall - never invent it."
+          },
+          "valid_to": {
+            "type": "string",
+            "description": "ISO-8601 time with time zone from which the entry no longer applies; defaults to now. Example: '2026-10-11T22:10:00+02:00'."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it ends (e.g. 'source withdrawn'); stored with the entry."
+          }
+        },
+        "required": [
+          "target_id"
+        ]
+      }
+    },
+    {
       "name": "knowmind_recall_at_time",
       "annotations": {
         "title": "Recall at time",
@@ -290,7 +325,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Time-travel recall: return only memories that were valid at a given instant (valid_from <= as_of <= valid_to, or still open). Answers 'what did the agent know on March 14?'. Use instead of knowmind_recall when the point in time matters; otherwise use knowmind_recall for the current truth. Passages from pages in Open Knowledge Format carry metadata.review_flags (stale, unverified, superseded, drifted); stale and superseded are judged against as_of. Read scope suffices.",
+      "description": "Time-travel recall: return only memories that were valid at a given instant (valid_from <= as_of <= valid_to, or still open). Answers 'what did the agent know on March 14?'. Use instead of knowmind_recall when the point in time matters; otherwise use knowmind_recall for the current truth. Passages from pages in Open Knowledge Format carry metadata.review_flags (stale, unverified, superseded, drifted); stale and superseded are judged against as_of. When kein_belastbarer_treffer is true, the corpus as of as_of most likely holds no answer; it is judged on the hits visible at as_of. Unless they clearly answer the question, say so. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -414,13 +449,13 @@
     {
       "name": "knowmind_unlink_entities",
       "annotations": {
-        "title": "Remove relation",
+        "title": "End relation",
         "readOnlyHint": false,
         "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Delete a typed relation between two memory nodes; the inverse edge is removed with it. Idempotent - deleting a non-existent edge is a no-op. Use to correct a wrong link created via knowmind_link. Requires write scope.",
+      "description": "End a relation between two memories; inverse and inferred edges end with it. It stays in history, where knowmind_recall_at_time finds it. Repeating it does nothing. Fixes a wrong knowmind_link. Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -551,7 +586,7 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. Read scope suffices.",
+      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_recall_memories. This name keeps answering unchanged until then. Retrieve relevant knowledge before answering anything that benefits from prior context - decisions, preferences, project state, people, deadlines, past conversations. Hybrid recall (BM25 + pgvector + knowledge graph) over the tenant corpus; returns the top-k memory chunks, each with a relevance score and source reference. Suitable whenever earlier context would improve the answer; use knowmind_recall_at_time when you need what was valid at a past point in time. Passages from pages in Open Knowledge Format carry metadata.review_flags: stale once stale_after is reached, unverified when no verification is recorded, superseded when the page's status is deprecated or superseded or its valid_to is reached, drifted when code cited by the page's claims changed or was removed since the page was written; an empty list means none applies. When kein_belastbarer_treffer is true, the corpus most likely holds no answer; unless the hits clearly answer the question, say so. Read scope suffices.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -708,13 +743,13 @@
     {
       "name": "knowmind_unlink",
       "annotations": {
-        "title": "Remove relation (deprecated)",
+        "title": "End relation (deprecated)",
         "readOnlyHint": false,
         "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_unlink_entities. This name keeps answering unchanged until then. Delete a typed relation between two memory nodes; the inverse edge is removed with it. Idempotent - deleting a non-existent edge is a no-op. Use to correct a wrong link created via knowmind_link. Requires write scope.",
+      "description": "DEPRECATED, removed on 2027-03-31: use knowmind_unlink_entities. This name keeps answering unchanged until then. End a relation between two memories; inverse and inferred edges end with it. It stays in history, where knowmind_recall_at_time finds it. Repeating it does nothing. Fixes a wrong knowmind_link. Requires write scope.",
       "inputSchema": {
         "type": "object",
         "properties": {
