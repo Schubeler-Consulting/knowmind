@@ -93,6 +93,17 @@ test("detectClients erkennt .claude und .cursor im Projekt", () => {
   rmSync(home, { recursive: true, force: true });
 });
 
+test("detectClients erkennt Gemini CLI an settings.json, nicht am nackten Ordner", () => {
+  const dir = freshDir();
+  const home = freshDir();
+  mkdirSync(join(home, ".gemini"));
+  assert.deepEqual(detectClients(dir, home), []);
+  writeFileSync(join(home, ".gemini", "settings.json"), "{}");
+  assert.deepEqual(detectClients(dir, home), ["gemini-cli"]);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
 test("runInit --dry-run schreibt nichts", async () => {
   const dir = freshDir();
   const home = freshDir();

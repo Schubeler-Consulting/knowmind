@@ -1,5 +1,15 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.9 (2026-11-16)
+
+- Neu: `knowmind init --client gemini-cli` richtet den Abruf vor jeder Eingabe auch in Gemini CLI
+  ein (Hook `BeforeAgent`, ab Gemini CLI 0.26.0). `--client auto` erkennt Gemini CLI an
+  `.gemini/settings.json` im Projekt oder im Nutzerordner. Voreinstellung wie bei Claude Code:
+  nur das aktuelle Projekt; alle Projekte mit `--global` oder Wahl im Dialog.
+- `knowmind init --uninstall-hook` schaltet den Abruf auch in Gemini CLI ab.
+- Die Abruf-Hooks schicken den Kopf `X-Knowmind-Herkunft: automatisch`, die Befehle der
+  Kommandozeile `X-Knowmind-Herkunft: cli`. Der Kopf enthält keine Kennung.
+
 ## 0.4.8 (2026-11-16)
 
 - `knowmind init` fragt jetzt, ob der Abruf vor jeder Eingabe in Claude Code nur im aktuellen

@@ -9,6 +9,11 @@ import { loadConfig } from "./config.js";
 
 let rpcId = 1;
 
+// Herkunft eines Aufrufs, damit knowmind Aufrufe der Kommandozeile von
+// automatischen Abrufen der Hooks unterscheiden und anonym zählen kann. Der Kopf
+// trägt nur die Art des Aufrufs, keine Kennung.
+export const HERKUNFT_CLI = { "x-knowmind-herkunft": "cli" };
+
 async function rpc(method, params, options = {}) {
   const { apiUrl, token } = loadConfig();
   if (!token) throw new Error("Kein Token konfiguriert — bitte `knowmind login` ausführen.");
@@ -17,6 +22,7 @@ async function rpc(method, params, options = {}) {
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${token}`,
+      ...HERKUNFT_CLI,
       ...(options.headers ?? {}),
     },
     body: JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method, params }),
@@ -127,7 +133,7 @@ export async function uploadDocument(title, content, opts = {}) {
 
   const r = await fetch(`${apiUrl}/api/documents`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...HERKUNFT_CLI },
     body: JSON.stringify(body),
   });
   const text = await r.text();

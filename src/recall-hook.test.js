@@ -6,7 +6,9 @@
  * - init sagt, was übertragen wird; --uninstall-hook trägt den Abruf aus.
  * - Der erzeugte Hook selbst, gegen einen nachgebauten Server: Abruf auch bei Eingaben in einer Hülle,
  *   kein Abruf bei Hinweisen des Systems, Stille ohne belastbaren Treffer, „(ungeprüft)“ an unbestätigten
- *   Beziehungen, ein zweiter Versuch nach einem frühen Serverfehler.
+ *   Beziehungen, ein zweiter Versuch nach einem frühen Serverfehler, Kopf X-Knowmind-Herkunft: automatisch.
+ * - Gemini CLI (seit 0.4.9): Einrichtung im Projekt und für alle Projekte, Ausgabe als
+ *   hookSpecificOutput.additionalContext, --uninstall-hook deckt Gemini mit ab.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -78,11 +80,13 @@ const TREFFER = {
 
 async function mitServer(antworten, fn) {
   const anfragen = [];
+  const koepfe = [];
   const server = createServer((req, res) => {
     let roh = "";
     req.on("data", (c) => (roh += c));
     req.on("end", () => {
       anfragen.push(JSON.parse(roh));
+      koepfe.push(req.headers);
       const naechste = antworten[Math.min(anfragen.length - 1, antworten.length - 1)];
       res.writeHead(naechste.status || 200, { "Content-Type": "application/json" });
       res.end(naechste.body || "");
@@ -90,14 +94,13 @@ async function mitServer(antworten, fn) {
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   try {
-    return await fn(`http://127.0.0.1:${server.address().port}`, anfragen);
+    return await fn(`http://127.0.0.1:${server.address().port}`, anfragen, koepfe);
   } finally {
     server.close();
   }
 }
 
-async function hookLauf(home, api, prompt) {
-  const hook = join(home, ".claude", "hooks", "knowmind_recall.mjs");
+async function hookLauf(home, api, prompt, { hook = join(home, ".claude", "hooks", "knowmind_recall.mjs"), felder = {} } = {}) {
   return await new Promise((resolve) => {
     const p = spawn(process.execPath, [hook], {
       env: { ...process.env, HOME: home, USERPROFILE: home, KNOWMIND_API_URL: api, KNOWMIND_TOKEN: "nur-fuer-den-test" },
@@ -105,9 +108,12 @@ async function hookLauf(home, api, prompt) {
     let aus = "";
     p.stdout.on("data", (c) => (aus += c));
     p.on("close", (code) => resolve({ code, aus }));
-    p.stdin.end(JSON.stringify({ prompt, session_id: "test" }));
+    p.stdin.end(JSON.stringify({ prompt, session_id: "test", ...felder }));
   });
 }
+
+// Eingabe von Gemini CLI für BeforeAgent (https://geminicli.com/docs/hooks/reference/): Basisfelder plus prompt.
+const GEMINI = { hook_event_name: "BeforeAgent", cwd: "/tmp/projekt", transcript_path: "", timestamp: "2026-11-16T18:00:00Z" };
 
 async function eingerichtet() {
   const dir = freshDir();
@@ -118,7 +124,7 @@ async function eingerichtet() {
 
 test("Hook: Abruf bei Eingabe, Sitzungsnachricht und Kanal; ungeprüfte Beziehung gekennzeichnet", async () => {
   const { dir, home } = await eingerichtet();
-  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen) => {
+  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen, koepfe) => {
     const eingaben = [
       "Angebot für Müller schreiben",
       '<cross-session-message from="uds:x" from-name="Orchestrator">Wer stellt den X2D her?</cross-session-message>',
@@ -134,6 +140,7 @@ test("Hook: Abruf bei Eingabe, Sitzungsnachricht und Kanal; ungeprüfte Beziehun
     assert.equal(anfragen[0].params.arguments.query, "Angebot für Müller schreiben");
     assert.equal(anfragen[1].params.arguments.query, "Wer stellt den X2D her?");
     assert.equal(anfragen[2].params.arguments.query, "Wer stellt den X2D her?");
+    assert.ok(koepfe.every((k) => k["x-knowmind-herkunft"] === "automatisch"));
   });
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });
@@ -187,8 +194,9 @@ test("--uninstall-hook trägt den Abruf aus; die Projektkopie tritt nur neben ei
     await lauf(projektHook);
     assert.equal(anfragen.length, 0, "Projektkopie tritt neben dem globalen Eintrag zurück");
     const aus = runUninstallHook({ cwd: dir, home });
-    assert.match(aus, /Abruf ausgetragen \(alle Projekte\)/);
-    assert.match(aus, /Abruf ausgetragen \(dieses Projekt\)/);
+    assert.match(aus, /Abruf ausgetragen \(Claude Code, alle Projekte\)/);
+    assert.match(aus, /Abruf ausgetragen \(Claude Code, dieses Projekt\)/);
+    assert.match(aus, /Starte Claude Code neu/);
     const h = JSON.parse(readFileSync(join(home, ".claude", "settings.json"), "utf-8"));
     const s = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
     assert.equal(h.hooks.UserPromptSubmit, undefined);
@@ -198,6 +206,118 @@ test("--uninstall-hook trägt den Abruf aus; die Projektkopie tritt nur neben ei
     await lauf(projektHook);
     assert.equal(anfragen.length, 1);
     assert.match(runUninstallHook({ cwd: dir, home }), /nichts zu tun/);
+  });
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+// ── Gemini CLI ─────────────────────────────────────────────────────
+
+function geminiEintraege(pfad) {
+  const s = JSON.parse(readFileSync(pfad, "utf-8"));
+  return ((s.hooks && s.hooks.BeforeAgent) || []).flatMap((g) => g.hooks);
+}
+
+test("Gemini: init richtet den Abruf ohne Wahl nur im Projekt ein, idempotent, Fremdes bleibt", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  mkdirSync(join(dir, ".gemini"));
+  writeFileSync(join(dir, ".gemini", "settings.json"), JSON.stringify({ mcpServers: { a: { command: "x" } } }));
+  const aus = await runInit({ client: "gemini-cli", dryRun: false, cwd: dir, home });
+  assert.ok(existsSync(join(dir, ".gemini", "hooks", "knowmind_recall.mjs")));
+  assert.ok(!existsSync(join(home, ".gemini")));
+  const pfad = join(dir, ".gemini", "settings.json");
+  const [eintrag] = geminiEintraege(pfad);
+  assert.deepEqual(
+    { name: eintrag.name, type: eintrag.type, command: eintrag.command, timeout: eintrag.timeout },
+    { name: "knowmind-recall", type: "command", command: "node .gemini/hooks/knowmind_recall.mjs", timeout: 15000 },
+  );
+  assert.deepEqual(JSON.parse(readFileSync(pfad, "utf-8")).mcpServers, { a: { command: "x" } });
+  assert.match(aus, /Jede Eingabe in Gemini CLI in diesem Projekt wird für den Abruf an \S+ übertragen/);
+  assert.match(aus, /nur in vertrauenswürdigen Ordnern/);
+  assert.match(aus, /Abschalten: knowmind init --uninstall-hook/);
+  // Zweiter Lauf, auch über den Kurznamen: nichts doppelt.
+  const zweit = await runInit({ client: "gemini", dryRun: false, cwd: dir, home });
+  assert.match(zweit, /\[=\] Gemini-CLI \.gemini\/settings\.json/);
+  assert.equal(geminiEintraege(pfad).length, 1);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("Gemini: init global trägt in ~/.gemini ein und nimmt den Projekteintrag heraus", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  await runInit({ client: "gemini-cli", dryRun: false, cwd: dir, home });
+  const projekt = join(dir, ".gemini", "settings.json");
+  const s0 = JSON.parse(readFileSync(projekt, "utf-8"));
+  s0.hooks.BeforeAgent.push({ hooks: [{ type: "command", command: "node fremd.js" }] });
+  writeFileSync(projekt, JSON.stringify(s0));
+  const aus = await runInit({ client: "gemini-cli", dryRun: false, cwd: dir, home, global: true });
+  assert.match(aus, /in allen Projekten\. Jede Eingabe in Gemini CLI wird für den Abruf an \S+ übertragen/);
+  const [global] = geminiEintraege(join(home, ".gemini", "settings.json"));
+  const hookPfad = join(home, ".gemini", "hooks", "knowmind_recall.mjs").replace(/\\/g, "/");
+  assert.equal(global.command, `node "${hookPfad}"`);
+  assert.deepEqual(geminiEintraege(projekt).map((h) => h.command), ["node fremd.js"]);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("Gemini: auto erkennt Gemini CLI und richtet es mit ein", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  mkdirSync(join(home, ".gemini"));
+  writeFileSync(join(home, ".gemini", "settings.json"), "{}");
+  const aus = await runInit({ client: "auto", dryRun: false, cwd: dir, home });
+  assert.match(aus, /Erkannter Client: gemini-cli/);
+  assert.equal(geminiEintraege(join(dir, ".gemini", "settings.json")).length, 1);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("Gemini: Hook gibt Treffer als additionalContext aus, mit Herkunft; ohne Treffer und bei Hinweisen still", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  await runInit({ client: "gemini-cli", dryRun: false, cwd: dir, home, global: true });
+  const hook = join(home, ".gemini", "hooks", "knowmind_recall.mjs");
+  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen, koepfe) => {
+    const { code, aus } = await hookLauf(home, api, "Wer stellt den X2D für Müller her?", { hook, felder: GEMINI });
+    assert.equal(code, 0);
+    assert.ok(/^[\x00-\x7f]*$/.test(aus), "reines ASCII");
+    const o = JSON.parse(aus);
+    assert.equal(o.hookSpecificOutput.hookEventName, "BeforeAgent");
+    assert.match(o.hookSpecificOutput.additionalContext, /Beziehung: Bambu Lab X2D hergestellt von: Bambu Lab\n/);
+    assert.match(o.hookSpecificOutput.additionalContext, /Agenten-Setup-Kurs baut auf: Lernardo \(ungeprüft\)/);
+    assert.equal(anfragen[0].params.arguments.query, "Wer stellt den X2D für Müller her?");
+    assert.equal(koepfe[0]["x-knowmind-herkunft"], "automatisch");
+    assert.deepEqual(await hookLauf(home, api, "<system-reminder>Zeit</system-reminder>", { hook, felder: GEMINI }),
+      { code: 0, aus: "" });
+    assert.equal(anfragen.length, 1);
+  });
+  await mitServer([{ body: antwortMit({ ...TREFFER, kein_belastbarer_treffer: true }) }], async (api) => {
+    assert.deepEqual(await hookLauf(home, api, "Welche Leistungen bietet die Firma an?", { hook, felder: GEMINI }),
+      { code: 0, aus: "" });
+  });
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("Gemini: Projektkopie tritt neben dem Eintrag für alle Projekte zurück; --uninstall-hook trägt Gemini aus", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  await runInit({ client: "gemini-cli", dryRun: false, cwd: dir, home });                      // Projekt
+  await runInit({ client: "gemini-cli", dryRun: false, cwd: freshDir(), home, global: true }); // alle Projekte
+  const projektHook = join(dir, ".gemini", "hooks", "knowmind_recall.mjs");
+  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen) => {
+    await hookLauf(home, api, "Wer stellt den X2D her?", { hook: projektHook, felder: GEMINI });
+    assert.equal(anfragen.length, 0, "Projektkopie tritt neben dem globalen Eintrag zurück");
+    const aus = runUninstallHook({ cwd: dir, home });
+    assert.match(aus, /Abruf ausgetragen \(Gemini CLI, alle Projekte\)/);
+    assert.match(aus, /Abruf ausgetragen \(Gemini CLI, dieses Projekt\)/);
+    assert.match(aus, /Starte Gemini CLI neu/);
+    assert.equal(JSON.parse(readFileSync(join(home, ".gemini", "settings.json"), "utf-8")).hooks.BeforeAgent, undefined);
+    assert.equal(JSON.parse(readFileSync(join(dir, ".gemini", "settings.json"), "utf-8")).hooks.BeforeAgent, undefined);
+    await hookLauf(home, api, "Wer stellt den X2D her?", { hook: projektHook, felder: GEMINI });
+    assert.equal(anfragen.length, 1);
   });
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });

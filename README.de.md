@@ -63,12 +63,14 @@ Damit Ihre KI knowmind selbsttätig pflegt — in Claude Code **Recall vor jeder
 **Sichern nach jeder sicherungswürdigen Runde**, in Cursor und Codex als Regel für das Modell —
 richtet `knowmind init` die passenden Mechanismen für
 Ihren Client ein. Der Befehl erkennt den Client an `.claude/` im Projekt, `~/.claude.json` oder
-`~/.claude` (Claude Code), an `.cursor/` im Projekt oder `~/.cursor` (Cursor) und an
+`~/.claude` (Claude Code), an `.gemini/settings.json` im Projekt oder `~/.gemini/settings.json`
+(Gemini CLI), an `.cursor/` im Projekt oder `~/.cursor` (Cursor) und an
 `~/.codex/config.toml` (Codex), oder Sie wählen ihn explizit.
 
 ```
 knowmind init                          # Client automatisch erkennen
 knowmind init --client claude-code     # gezielt für Claude Code
+knowmind init --client gemini-cli      # gezielt für Gemini CLI
 knowmind init --client cursor          # gezielt für Cursor
 knowmind init --client codex           # gezielt für Codex
 knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nichts)
@@ -91,6 +93,12 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
       sicherungswürdig gelten Deploy oder Commit, eine neue Regel, eine Architekturentscheidung und
       geänderter Code oder geänderte Konfiguration.
     - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
+- **Gemini CLI** (ab Gemini CLI 0.26.0) — *BeforeAgent* → derselbe Abruf vor jeder Eingabe, die
+  Treffer gehen als zusätzlicher Kontext an das Modell. Umfang wie bei Claude Code: nur dieses
+  Projekt (`./.gemini/settings.json`, Voreinstellung) oder mit `--global` bzw. Wahl im Dialog alle
+  Projekte (`~/.gemini/settings.json`); dann wird jede Eingabe in Gemini CLI für den Abruf an
+  knowmind übertragen. Hooks eines Projekts führt Gemini CLI nur in vertrauenswürdigen Ordnern aus.
+  `knowmind init --uninstall-hook` schaltet den Abruf auch hier ab.
 - **Cursor** — `.cursor/rules/knowmind.mdc` mit der Memory-First-Regel (`alwaysApply`).
 - **Codex** — ein Block in `AGENTS.md` (mit Markern wie bei `CLAUDE.md`): knowmind fragen, wenn
   eine Aufgabe von Entscheidungen, Absprachen oder Wissen außerhalb des Codes abhängt; Quellcode
@@ -100,6 +108,10 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
   MCP-instructions und die MCP-prompts, und der Befehl zeigt den Memory-First-Text zum manuellen
   Einfügen (siehe Grenze unten).
 
+**Herkunft:** Die Abruf-Hooks schicken bei jedem Abruf den Kopf `X-Knowmind-Herkunft: automatisch`,
+die Befehle der Kommandozeile `X-Knowmind-Herkunft: cli`. So kann knowmind automatische Abrufe von
+gezielten unterscheiden; der Kopf enthält keine Kennung.
+
 **Idempotent & nicht-destruktiv:** Ein zweiter Lauf erzeugt keine Duplikate
 (marker-/befehls-basierte Ersetzung). Vorhandene fremde Hooks ändert init nicht. Eine vorhandene
 `CLAUDE.md` oder `AGENTS.md` bekommt den markierten Block angehängt, eine vorhandene
@@ -107,7 +119,8 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 knowmind-Datei, aber keinen Marker, wird sie übersprungen. Mit `--dry-run` sehen Sie jede Aktion vorab.
 
 > **Grenze der Automatik:** Eine *harte* Erzwingung der Pflege gibt es nur in Claude Code,
-> dessen Hooks unabhängig vom Modell laufen. Die Regeldatei in Cursor und der Block in
+> dessen Hooks unabhängig vom Modell laufen; Gemini CLI bekommt den Abruf vor jeder Eingabe
+> ebenfalls als Hook, das Sichern bleibt dort eine Anweisung. Die Regeldatei in Cursor und der Block in
 > `AGENTS.md` für Codex sind Anweisungen an das Modell, ebenso in allen übrigen Clients die
 > **MCP-instructions** (werden beim Verbinden gelesen) und die **MCP-prompts** — eine
 > modellabhängige Steuerung ohne technische Garantie.
