@@ -1,5 +1,14 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.8 (2026-11-16)
+
+- `knowmind init` fragt jetzt, ob der Abruf vor jeder Eingabe in Claude Code nur im aktuellen
+  Projekt laufen soll (Voreinstellung) oder in allen Projekten. `--project` und `--global` legen
+  es ohne Frage fest; ohne Terminal oder mit `--yes` gilt nur das aktuelle Projekt.
+- `init` sagt in einem Satz, welche Eingaben für den Abruf an knowmind übertragen werden.
+- Neu: `knowmind init --uninstall-hook` schaltet den Abruf ab (für alle Projekte und im aktuellen
+  Projekt). Andere Hooks bleiben unverändert.
+
 ## 0.4.7 (2026-11-16)
 
 - `knowmind init` richtet den Abruf vor jeder Eingabe in Claude Code jetzt für alle

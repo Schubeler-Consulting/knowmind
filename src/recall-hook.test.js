@@ -1,8 +1,9 @@
 /**
  * Tests für den Recall-Hook, den `knowmind init` für Claude Code einrichtet.
  *
- * - Standard: für alle Projekte (~/.claude), mit --project nur für das Projekt.
- * - Ein älterer Recall-Eintrag im Projekt wird entfernt, damit je Eingabe ein Abruf läuft.
+ * - Voreinstellung: nur dieses Projekt; für alle Projekte (~/.claude) nur mit global (--global oder Wahl im Dialog).
+ * - Bei global wird ein Recall-Eintrag im Projekt entfernt, damit je Eingabe ein Abruf läuft.
+ * - init sagt, was übertragen wird; --uninstall-hook trägt den Abruf aus.
  * - Der erzeugte Hook selbst, gegen einen nachgebauten Server: Abruf auch bei Eingaben in einer Hülle,
  *   kein Abruf bei Hinweisen des Systems, Stille ohne belastbaren Treffer, „(ungeprüft)“ an unbestätigten
  *   Beziehungen, ein zweiter Versuch nach einem frühen Serverfehler.
@@ -14,36 +15,39 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { runInit } from "./init.js";
+import { runInit, runUninstallHook } from "./init.js";
 
 function freshDir() {
   return mkdtempSync(join(tmpdir(), "knowmind-recall-test-"));
 }
 
-test("init --project richtet den Recall nur im Projekt ein", async () => {
+test("init richtet den Recall ohne Wahl nur im Projekt ein und sagt, was übertragen wird", async () => {
   const dir = freshDir();
   const home = freshDir();
   mkdirSync(join(dir, ".claude"));
-  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home, projekt: true });
+  const aus = await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
   assert.ok(existsSync(join(dir, ".claude", "hooks", "knowmind_recall.mjs")));
   assert.ok(!existsSync(join(home, ".claude", "hooks", "knowmind_recall.mjs")));
   const s = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
   assert.equal(s.hooks.UserPromptSubmit.length, 1);
+  assert.match(aus, /Jede Eingabe in Claude Code in diesem Projekt wird für den Abruf an \S+ übertragen/);
+  assert.match(aus, /Abschalten: knowmind init --uninstall-hook/);
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });
 });
 
-test("init ohne --project nimmt einen älteren Recall-Eintrag aus dem Projekt", async () => {
+test("init global nimmt den Recall-Eintrag aus dem Projekt und sagt es", async () => {
   const dir = freshDir();
   const home = freshDir();
   mkdirSync(join(dir, ".claude"));
-  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home, projekt: true });
+  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
   // Fremder Hook im selben Event bleibt stehen.
   const pfad = join(dir, ".claude", "settings.json");
   const s0 = JSON.parse(readFileSync(pfad, "utf-8"));
   s0.hooks.UserPromptSubmit.push({ hooks: [{ type: "command", command: "node fremd.js" }] });
   writeFileSync(pfad, JSON.stringify(s0));
-  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
+  const aus = await runInit({ client: "claude-code", dryRun: false, cwd: dir, home, global: true });
+  assert.match(aus, /in allen Projekten\. Jede Eingabe in Claude Code wird für den Abruf an \S+ übertragen/);
   const s = JSON.parse(readFileSync(pfad, "utf-8"));
   assert.equal(s.hooks.UserPromptSubmit.length, 1);
   assert.equal(s.hooks.UserPromptSubmit[0].hooks[0].command, "node fremd.js");
@@ -108,7 +112,7 @@ async function hookLauf(home, api, prompt) {
 async function eingerichtet() {
   const dir = freshDir();
   const home = freshDir();
-  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
+  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home, global: true });
   return { dir, home };
 }
 
@@ -161,6 +165,40 @@ test("Hook: zweiter Versuch nach frühem Serverfehler, nie blockiert", async () 
   // Server weg: still, Rückgabe 0.
   const { code, aus } = await hookLauf(home, "http://127.0.0.1:9", "Wer stellt den X2D her?");
   assert.deepEqual({ code, aus }, { code: 0, aus: "" });
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("--uninstall-hook trägt den Abruf aus; die Projektkopie tritt nur neben einem Eintrag zurück", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  mkdirSync(join(dir, ".claude"));
+  await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });              // Projekt
+  await runInit({ client: "claude-code", dryRun: false, cwd: freshDir(), home, global: true }); // alle Projekte
+  const projektHook = join(dir, ".claude", "hooks", "knowmind_recall.mjs");
+  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen) => {
+    const lauf = (hook) => new Promise((resolve) => {
+      const p = spawn(process.execPath, [hook], {
+        env: { ...process.env, HOME: home, USERPROFILE: home, KNOWMIND_API_URL: api, KNOWMIND_TOKEN: "t" },
+      });
+      p.on("close", resolve);
+      p.stdin.end(JSON.stringify({ prompt: "Wer stellt den X2D her?" }));
+    });
+    await lauf(projektHook);
+    assert.equal(anfragen.length, 0, "Projektkopie tritt neben dem globalen Eintrag zurück");
+    const aus = runUninstallHook({ cwd: dir, home });
+    assert.match(aus, /Abruf ausgetragen \(alle Projekte\)/);
+    assert.match(aus, /Abruf ausgetragen \(dieses Projekt\)/);
+    const h = JSON.parse(readFileSync(join(home, ".claude", "settings.json"), "utf-8"));
+    const s = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.equal(h.hooks.UserPromptSubmit, undefined);
+    assert.equal(s.hooks.UserPromptSubmit, undefined);
+    assert.equal(s.hooks.Stop.length, 1, "andere Hooks bleiben");
+    // Ohne globalen Eintrag tritt die Projektkopie nicht mehr zurück (falls jemand sie von Hand einträgt).
+    await lauf(projektHook);
+    assert.equal(anfragen.length, 1);
+    assert.match(runUninstallHook({ cwd: dir, home }), /nichts zu tun/);
+  });
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });
 });

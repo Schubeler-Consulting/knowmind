@@ -4,9 +4,9 @@
  * Richtet die AUTOMATISCHE Gedächtnis-Pflege im erkannten KI-Client ein, damit
  * die Kunden-KI knowmind ohne manuelles Hook-Gefrickel pflegt:
  *
- *   - Claude Code: richtet den Recall vor jeder Eingabe für alle Projekte ein
- *     (~/.claude, UserPromptSubmit -> knowmind_recall; mit --project nur für dieses
- *     Projekt) und schreibt projektlokal Stop -> Capture-Reminder, der an knowmind_store_memory
+ *   - Claude Code: richtet den Recall vor jeder Eingabe für dieses Projekt ein
+ *     (UserPromptSubmit -> knowmind_recall; mit --global oder Wahl im Dialog für alle
+ *     Projekte in ~/.claude) und schreibt projektlokal Stop -> Capture-Reminder, der an knowmind_store_memory
  *     erinnert, wenn die Runde Sicherungswürdiges enthielt) und einen
  *     Memory-First-Block in ./CLAUDE.md (idempotent, BEGIN/END-Marker).
  *   - Cursor: schreibt .cursor/rules/knowmind.mdc mit der Memory-First-Regel.
@@ -202,8 +202,8 @@ function autoRecallHookSource() {
 // jeder Fehler / fehlendes Token -> exit 0 ohne Ausgabe, blockiert nie.
 //
 // Liegt dieser Hook in einem Projekt und ist er zusätzlich für alle Projekte
-// eingerichtet (~/.claude/hooks), tritt die Projektkopie zurück: ein Abruf je
-// Eingabe.
+// eingetragen (~/.claude/settings.json), tritt die Projektkopie zurück: ein
+// Abruf je Eingabe.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, unlinkSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, dirname } from "node:path";
@@ -249,13 +249,17 @@ function bumpSessionRecalls(sessionId, hits) {
   } catch {}
 }
 
-// Projektkopie neben einer Einrichtung für alle Projekte: zurücktreten.
+// Projektkopie neben einer eingetragenen Einrichtung für alle Projekte: zurücktreten.
+// Maßgeblich ist der Eintrag in ~/.claude/settings.json, nicht die Datei: Nach
+// \`knowmind init --uninstall-hook\` liegt die Datei noch, läuft aber nicht mehr.
 function projektKopieNebenGlobaler() {
   try {
     const hier = resolve(dirname(fileURLToPath(import.meta.url))).toLowerCase();
     const global = resolve(join(homedir(), ".claude", "hooks"));
     if (hier === global.toLowerCase()) return false;
-    return existsSync(join(global, "knowmind_recall.mjs"));
+    const s = JSON.parse(readFileSync(join(homedir(), ".claude", "settings.json"), "utf-8"));
+    return (s.hooks && s.hooks.UserPromptSubmit || []).some((g) =>
+      (g.hooks || []).some((h) => typeof h.command === "string" && h.command.includes("knowmind_recall.mjs")));
   } catch { return false; }
 }
 
@@ -672,8 +676,8 @@ function vorwaerts(p) {
 /**
  * Recall-Hook für alle Projekte: ~/.claude/hooks/knowmind_recall.mjs, eingetragen in ~/.claude/settings.json.
  *
- * WARUM: Ein Hook im Projektordner ruft nur in diesem Projekt ab. Wer in einem anderen Ordner arbeitet, hat kein
- * Gedächtnis — und merkt es nicht. Der Abruf vor jeder Eingabe gehört deshalb zum Benutzer, nicht zum Projekt.
+ * Nur auf ausdrücklichen Wunsch (--global oder Wahl im Dialog): Dann geht jede Eingabe aus jedem Projekt für den
+ * Abruf an knowmind, auch aus Projekten, die mit dem Wissen nichts zu tun haben. Abschalten: --uninstall-hook.
  */
 function planRecallGlobal(home) {
   const actions = [];
@@ -721,10 +725,72 @@ function planRecallGlobal(home) {
   return actions;
 }
 
+/** Ist der Recall-Hook in einer settings.json eingetragen? */
+function recallEingetragen(settingsPath) {
+  const s = settingsLesen(settingsPath);
+  return ((s.hooks && s.hooks.UserPromptSubmit) || []).some((g) =>
+    (g.hooks || []).some((h) => typeof h.command === "string" && h.command.includes("knowmind_recall.mjs")));
+}
+
+function hostVon(apiUrl) {
+  try {
+    return new URL(apiUrl).host;
+  } catch {
+    return apiUrl;
+  }
+}
+
+/** Ein Satz, was übertragen wird, und wie man es abschaltet. */
+function abrufHinweis({ global, apiUrl, home }) {
+  const host = hostVon(apiUrl);
+  const zeilen = [];
+  if (global) {
+    zeilen.push(`Abruf vor jeder Eingabe: in allen Projekten. Jede Eingabe in Claude Code wird für den Abruf an ${host} übertragen.`);
+  } else {
+    zeilen.push(`Abruf vor jeder Eingabe: nur in diesem Projekt. Jede Eingabe in Claude Code in diesem Projekt wird für den Abruf an ${host} übertragen.`);
+    if (recallEingetragen(join(home, ".claude", "settings.json"))) {
+      zeilen.push("Aus einer früheren Einrichtung ist der Abruf auch für alle Projekte eingetragen.");
+      zeilen.push("Nur noch im Projekt: knowmind init --uninstall-hook, danach knowmind init.");
+    }
+  }
+  zeilen.push("Abschalten: knowmind init --uninstall-hook");
+  zeilen.push("");
+  return zeilen;
+}
+
+/**
+ * `knowmind init --uninstall-hook`: trägt den Recall-Hook aus ~/.claude/settings.json und aus der settings.json
+ * des aktuellen Projekts aus. Die Skriptdateien bleiben liegen und laufen nicht mehr; andere Hooks bleiben, wie sie
+ * sind.
+ */
+export function runUninstallHook({ cwd = process.cwd(), home = homedir(), dryRun = false } = {}) {
+  const zeilen = [`knowmind init --uninstall-hook${dryRun ? "  (dry-run — es wird NICHTS geschrieben)" : ""}`];
+  let gefunden = false;
+  for (const [wo, pfad] of [
+    ["alle Projekte", join(home, ".claude", "settings.json")],
+    ["dieses Projekt", join(cwd, ".claude", "settings.json")],
+  ]) {
+    const settings = settingsLesen(pfad);
+    if (settings._parseError) {
+      zeilen.push(`  [!] ${pfad}  (kein gültiges JSON — bitte den Eintrag knowmind_recall.mjs von Hand entfernen)`);
+      continue;
+    }
+    if (!entferneClaudeHookEntry(settings, "UserPromptSubmit", "knowmind_recall.mjs")) continue;
+    gefunden = true;
+    zeilen.push(`  [~] Abruf ausgetragen (${wo}): ${pfad}`);
+    if (!dryRun) writeFileSync(pfad, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+  }
+  zeilen.push(gefunden
+    ? "Der Abruf vor jeder Eingabe ist abgeschaltet. Starte Claude Code neu, damit es greift."
+    : "Kein Abruf-Hook eingetragen, nichts zu tun.");
+  return zeilen.join("\n");
+}
+
 // ─── Plan-Bauer pro Client ───────────────────────────────────────────
 // Jeder Eintrag: { path, kind, render() -> {action, content?} oder Info }
 
-function planClaudeCode(cwd, { home = homedir(), projekt = false } = {}) {
+function planClaudeCode(cwd, { home = homedir(), global = false } = {}) {
+  const projekt = !global;
   const actions = [];
   const hooksDir = join(cwd, ".claude", "hooks");
   const recallPath = join(hooksDir, "knowmind_recall.mjs");
@@ -732,7 +798,9 @@ function planClaudeCode(cwd, { home = homedir(), projekt = false } = {}) {
   const settingsPath = join(cwd, ".claude", "settings.json");
   const claudeMdPath = join(cwd, "CLAUDE.md");
 
-  // 1) Recall-Hook: für alle Projekte (Standard) oder nur für dieses (--project).
+  // 1) Recall-Hook: nur für dieses Projekt (Voreinstellung) oder für alle Projekte (--global oder ausdrückliche
+  //    Wahl im Dialog). Für alle Projekte heißt: jede Eingabe aus jedem Projekt geht an knowmind — das entscheidet
+  //    der Nutzer, nicht die Voreinstellung.
   const recallSrc = autoRecallHookSource();
   if (projekt) {
     actions.push({
@@ -891,10 +959,10 @@ const ICON = {
 };
 
 /**
- * Haupteinstieg. options: { client, dryRun, cwd, home, projekt }
- * projekt: den Recall-Hook nur für dieses Projekt einrichten (Standard: für alle Projekte).
+ * Haupteinstieg. options: { client, dryRun, cwd, home, global }
+ * global: den Recall-Hook für alle Projekte einrichten (Voreinstellung: nur dieses Projekt).
  */
-export async function runInit({ client = "auto", dryRun = false, cwd = process.cwd(), home = homedir(), projekt = false } = {}) {
+export async function runInit({ client = "auto", dryRun = false, cwd = process.cwd(), home = homedir(), global = false } = {}) {
   const cfg = loadConfig();
   const lines = [];
   lines.push(`knowmind init ${VERSION}${dryRun ? "  (dry-run — es wird NICHTS geschrieben)" : ""}`);
@@ -925,7 +993,10 @@ export async function runInit({ client = "auto", dryRun = false, cwd = process.c
   const targets = Array.isArray(target) ? target : [target];
   const allActions = [];
   for (const t of targets) {
-    if (t === "claude-code") allActions.push(...planClaudeCode(cwd, { home, projekt }));
+    if (t === "claude-code") {
+      allActions.push(...planClaudeCode(cwd, { home, global }));
+      lines.push(...abrufHinweis({ global, apiUrl: cfg.apiUrl, home }));
+    }
     else if (t === "cursor") allActions.push(...planCursor(cwd));
     // Codex liest AGENTS.md im Projekt (seit 0.4.1 schreibt init den Block
     // dort hinein; bis 0.4.0 zeigte es ihn nur an).

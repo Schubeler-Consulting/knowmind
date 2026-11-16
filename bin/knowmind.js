@@ -24,7 +24,8 @@ import { loadConfig, saveConfig, configPath, VERSION } from "../src/config.js";
 import { runStdioServer } from "../src/mcp-stdio.js";
 import { syncDirectory } from "../src/sync.js";
 import { trefferKopf } from "../src/anzeige.js";
-import { runInit } from "../src/init.js";
+import { runInit, runUninstallHook, detectClients } from "../src/init.js";
+import { homedir } from "node:os";
 import { runInstall } from "../src/install.js";
 import { renderLine, renderFull, probe } from "../src/status.js";
 
@@ -53,11 +54,14 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
-  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL] [--project] [--dry-run]
+  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL]
+                [--project|--global] [--yes] [--dry-run] [--uninstall-hook]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
-                       Claude Code: Abruf vor jeder Eingabe in allen Projekten;
-                       --project richtet ihn nur für das aktuelle Projekt ein.
+                       Claude Code: Abruf vor jeder Eingabe; init fragt, ob nur in
+                       diesem Projekt (Voreinstellung) oder in allen Projekten.
+                       --global/--project legen es ohne Frage fest.
+                       --uninstall-hook schaltet den Abruf wieder ab.
                        --token/--api legen die Config gleich mit an.
   knowmind config      Aktuelle Konfiguration anzeigen
   knowmind search "Frage" [-k 5] [--hops 2]
@@ -275,9 +279,34 @@ async function runStatus() {
   console.log(await renderFull());
 }
 
+/**
+ * Umfang des Abrufs vor jeder Eingabe (Claude Code): nur dieses Projekt oder alle Projekte.
+ * --global bzw. --project entscheiden; sonst fragt init im Dialog. Ohne Dialog (kein Terminal, CI, --yes) gilt
+ * nur dieses Projekt: Für alle Projekte heißt, jede Eingabe aus jedem Projekt geht an knowmind.
+ */
+async function abrufUmfang() {
+  if (args.includes("--global")) return true;
+  if (args.includes("--project") || args.includes("--projekt")) return false;
+  if (args.includes("--yes") || args.includes("-y") || !process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const { createInterface } = await import("node:readline/promises");
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const antwort = (await rl.question(
+      "Abruf vor jeder Eingabe in Claude Code: [1] nur dieses Projekt (empfohlen)  [2] alle Projekte — Auswahl [1]: ",
+    )).trim();
+    return antwort === "2";
+  } finally {
+    rl.close();
+  }
+}
+
 async function runInitCmd() {
   const client = parseFlag("--client", "auto");
   const dryRun = args.includes("--dry-run");
+  if (args.includes("--uninstall-hook")) {
+    console.log(runUninstallHook({ dryRun }));
+    return;
+  }
   // Konsistenz zu `install`: --token/--api direkt verarbeiten und in der Config
   // ablegen, damit die erzeugten Hooks (sie lesen Token/URL aus ~/.knowmind/
   // config.json bzw. ENV) sofort funktionieren statt still ins Leere zu laufen.
@@ -288,8 +317,10 @@ async function runInitCmd() {
     const where = saveConfig({ ...(token ? { token } : {}), ...(api ? { apiUrl: api } : {}) });
     if (token) console.log(`Token gespeichert in ${where}.`);
   }
-  const projekt = args.includes("--project") || args.includes("--projekt");
-  console.log(await runInit({ client, dryRun, projekt }));
+  const claudeCode = client === "claude-code" ||
+    (client === "auto" && detectClients(process.cwd(), homedir()).includes("claude-code"));
+  const global = claudeCode ? await abrufUmfang() : false;
+  console.log(await runInit({ client, dryRun, global }));
   if (!dryRun) finishOnboardingHint();
 }
 
