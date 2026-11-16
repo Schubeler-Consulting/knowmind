@@ -1,6 +1,6 @@
 {
   "_hinweis": "Rückfall für tools/list, wenn die Discovery nicht erreichbar ist. Erzeugt aus https://knowmind.de/api/mcp/v1. Abgleich: npm run tools:abgleich",
-  "stand": "2026-11-01",
+  "stand": "2026-11-16",
   "quelle": "https://knowmind.de/api/mcp/v1",
   "protocolVersion": "2025-06-18",
   "tools": [
@@ -19,7 +19,7 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "Natural-language question; full sentences retrieve better than keywords."
+            "description": "One natural-language question about one topic; full sentences retrieve better than keyword lists. For several topics, make several calls."
           },
           "k": {
             "type": "integer",
@@ -592,7 +592,7 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "Natural-language question; full sentences retrieve better than keywords."
+            "description": "One natural-language question about one topic; full sentences retrieve better than keyword lists. For several topics, make several calls."
           },
           "k": {
             "type": "integer",
