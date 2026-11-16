@@ -1,5 +1,14 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.10 (2026-11-17)
+
+- Neu: `knowmind init --client codex` richtet neben dem Block in `AGENTS.md` auch den Abruf vor
+  jeder Eingabe in Codex ein (Hook `UserPromptSubmit`). Voreinstellung wie bei Claude Code: nur das
+  aktuelle Projekt (`.codex/hooks.json`); alle Projekte mit `--global` oder Wahl im Dialog
+  (`~/.codex/hooks.json`). Codex führt den Hook erst aus, wenn Sie ihn einmal mit `/hooks`
+  freigegeben haben.
+- `knowmind init --uninstall-hook` schaltet den Abruf auch in Codex ab.
+
 ## 0.4.9 (2026-11-16)
 
 - Neu: `knowmind init --client gemini-cli` richtet den Abruf vor jeder Eingabe auch in Gemini CLI

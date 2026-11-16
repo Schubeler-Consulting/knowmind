@@ -103,7 +103,9 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 - **Codex** — ein Block in `AGENTS.md` (mit Markern wie bei `CLAUDE.md`): knowmind fragen, wenn
   eine Aufgabe von Entscheidungen, Absprachen oder Wissen außerhalb des Codes abhängt; Quellcode
   und Tests bleiben maßgeblich; was über die Sitzung hinaus gilt, mit `knowmind_store_memory`
-  festhalten.
+  festhalten. Seit 0.4.10 dazu *UserPromptSubmit* → derselbe Abruf vor jeder Eingabe, Umfang wie
+  bei Claude Code (`./.codex/hooks.json`, Voreinstellung, oder mit `--global` `~/.codex/hooks.json`).
+  Codex führt einen neuen Hook erst aus, wenn Sie ihn einmal in Codex mit `/hooks` freigegeben haben.
 - **Claude Desktop / generisch** — kein Hook-Mechanismus, der die Pflege erzwingt; es wirken die
   MCP-instructions und die MCP-prompts, und der Befehl zeigt den Memory-First-Text zum manuellen
   Einfügen (siehe Grenze unten).
