@@ -322,3 +322,59 @@ test("Gemini: Projektkopie tritt neben dem Eintrag für alle Projekte zurück; -
   rmSync(dir, { recursive: true, force: true });
   rmSync(home, { recursive: true, force: true });
 });
+
+// ── Codex (seit 0.4.10) ────────────────────────────────────────────
+// Eingabe von Codex für UserPromptSubmit (learn.chatgpt.com/docs/hooks): wie Claude Code plus turn_id und model.
+const CODEX = { hook_event_name: "UserPromptSubmit", cwd: "/tmp/projekt", turn_id: "t1", model: "gpt", permission_mode: "default" };
+
+function codexEintraege(pfad) {
+  const s = JSON.parse(readFileSync(pfad, "utf-8"));
+  return ((s.hooks && s.hooks.UserPromptSubmit) || []).flatMap((g) => g.hooks);
+}
+
+test("Codex: init richtet Abruf und AGENTS.md im Projekt ein, idempotent, nennt die Freigabe mit /hooks", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  const aus = await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  assert.ok(existsSync(join(dir, "AGENTS.md")));
+  assert.ok(existsSync(join(dir, ".codex", "hooks", "knowmind_recall.mjs")));
+  assert.ok(!existsSync(join(home, ".codex")));
+  const pfad = join(dir, ".codex", "hooks.json");
+  assert.deepEqual(codexEintraege(pfad), [{ type: "command", command: "node .codex/hooks/knowmind_recall.mjs", timeout: 15 }]);
+  assert.match(aus, /Jede Eingabe in Codex in diesem Projekt wird für den Abruf an \S+ übertragen/);
+  assert.match(aus, /in Codex \/hooks aufrufen/);
+  const zweit = await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  assert.match(zweit, /\[=\] Codex \.codex\/hooks\.json/);
+  assert.equal(codexEintraege(pfad).length, 1);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});
+
+test("Codex: global trägt in ~/.codex ein, Projekteintrag fällt weg; Hook gibt Klartext; --uninstall-hook trägt aus", async () => {
+  const dir = freshDir();
+  const home = freshDir();
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home });
+  const projekt = join(dir, ".codex", "hooks.json");
+  const s0 = JSON.parse(readFileSync(projekt, "utf-8"));
+  s0.hooks.UserPromptSubmit.push({ hooks: [{ type: "command", command: "node fremd.js" }] });
+  writeFileSync(projekt, JSON.stringify(s0));
+  await runInit({ client: "codex", dryRun: false, cwd: dir, home, global: true });
+  const hookPfad = join(home, ".codex", "hooks", "knowmind_recall.mjs");
+  assert.deepEqual(codexEintraege(join(home, ".codex", "hooks.json")).map((h) => h.command),
+    [`node "${hookPfad.replace(/\\/g, "/")}"`]);
+  assert.deepEqual(codexEintraege(projekt).map((h) => h.command), ["node fremd.js"]);
+  await mitServer([{ body: antwortMit(TREFFER) }], async (api, anfragen, koepfe) => {
+    const { code, aus } = await hookLauf(home, api, "Wer stellt den X2D her?", { hook: hookPfad, felder: CODEX });
+    assert.equal(code, 0);
+    assert.match(aus, /knowmind RECALL \(auto\)/);
+    assert.ok(!aus.trimStart().startsWith("{"), "Codex bekommt Klartext");
+    assert.equal(koepfe[0]["x-knowmind-herkunft"], "automatisch");
+    const ab = runUninstallHook({ cwd: dir, home });
+    assert.match(ab, /Abruf ausgetragen \(Codex, alle Projekte\)/);
+    assert.equal(JSON.parse(readFileSync(join(home, ".codex", "hooks.json"), "utf-8")).hooks.UserPromptSubmit, undefined);
+    assert.deepEqual(codexEintraege(projekt).map((h) => h.command), ["node fremd.js"], "fremder Hook bleibt");
+    assert.equal(anfragen.length, 1);
+  });
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true });
+});

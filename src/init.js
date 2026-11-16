@@ -11,6 +11,8 @@
  *     Memory-First-Block in ./CLAUDE.md (idempotent, BEGIN/END-Marker).
  *   - Gemini CLI (seit 0.4.9): derselbe Recall vor jeder Eingabe als Hook BeforeAgent,
  *     nur für dieses Projekt (./.gemini) oder mit --global für alle Projekte (~/.gemini).
+ *   - Codex (seit 0.4.10): Block in AGENTS.md und derselbe Recall als Hook UserPromptSubmit,
+ *     nur für dieses Projekt (./.codex/hooks.json) oder mit --global (~/.codex/hooks.json).
  *   - Cursor: schreibt .cursor/rules/knowmind.mdc mit der Memory-First-Regel.
  *   - generisch / Claude Desktop: erklärt, dass die MCP-instructions automatisch
  *     wirken, und zeigt den manuellen Memory-First-Text zum Einfügen.
@@ -261,16 +263,17 @@ function bumpSessionRecalls(sessionId, hits) {
 
 // Projektkopie neben einer eingetragenen Einrichtung für alle Projekte: zurücktreten.
 // Maßgeblich ist der Eintrag in ~/.claude/settings.json (Gemini CLI:
-// ~/.gemini/settings.json), nicht die Datei: Nach \`knowmind init --uninstall-hook\`
-// liegt die Datei noch, läuft aber nicht mehr.
-function projektKopieNebenGlobaler(gemini) {
+// ~/.gemini/settings.json, Codex: ~/.codex/hooks.json), nicht die Datei: Nach
+// \`knowmind init --uninstall-hook\` liegt die Datei noch, läuft aber nicht mehr.
+function projektKopieNebenGlobaler(art) {
   try {
-    const ordner = gemini ? ".gemini" : ".claude";
-    const ereignis = gemini ? "BeforeAgent" : "UserPromptSubmit";
+    const ordner = art === "gemini" ? ".gemini" : art === "codex" ? ".codex" : ".claude";
+    const datei = art === "codex" ? "hooks.json" : "settings.json";
+    const ereignis = art === "gemini" ? "BeforeAgent" : "UserPromptSubmit";
     const hier = resolve(dirname(fileURLToPath(import.meta.url))).toLowerCase();
     const global = resolve(join(homedir(), ordner, "hooks"));
     if (hier === global.toLowerCase()) return false;
-    const s = JSON.parse(readFileSync(join(homedir(), ordner, "settings.json"), "utf-8"));
+    const s = JSON.parse(readFileSync(join(homedir(), ordner, datei), "utf-8"));
     return (s.hooks && s.hooks[ereignis] || []).some((g) =>
       (g.hooks || []).some((h) => typeof h.command === "string" && h.command.includes("knowmind_recall.mjs")));
   } catch { return false; }
@@ -399,13 +402,17 @@ async function main() {
   let prompt = "";
   let sessionId = "";
   let gemini = false;
+  let codex = false;
   try {
     const data = raw ? JSON.parse(raw) : {};
     prompt = data.prompt || data.user_prompt || data.user_message || "";
     sessionId = data.session_id || data.sessionId || "";
     gemini = data.hook_event_name === "BeforeAgent";
+    // Codex ruft UserPromptSubmit wie Claude Code auf, dazu mit turn_id; Klartext
+    // auf stdout wird dort ebenso Kontext des Modells.
+    codex = !gemini && typeof data.turn_id === "string";
   } catch { return; }
-  if (projektKopieNebenGlobaler(gemini)) return;
+  if (projektKopieNebenGlobaler(gemini ? "gemini" : codex ? "codex" : "claude")) return;
   const query = frageAus(prompt);
   if (!query) return;
 
@@ -749,8 +756,9 @@ function planRecallGlobal(home) {
 
 // Wo der Abruf je Client eingetragen wird.
 const ABRUF_CLIENTS = {
-  "claude-code": { name: "Claude Code", ordner: ".claude", ereignis: "UserPromptSubmit" },
-  "gemini-cli": { name: "Gemini CLI", ordner: ".gemini", ereignis: "BeforeAgent" },
+  "claude-code": { name: "Claude Code", ordner: ".claude", ereignis: "UserPromptSubmit", datei: "settings.json" },
+  "gemini-cli": { name: "Gemini CLI", ordner: ".gemini", ereignis: "BeforeAgent", datei: "settings.json" },
+  codex: { name: "Codex", ordner: ".codex", ereignis: "UserPromptSubmit", datei: "hooks.json" },
 };
 
 /** Ist der Recall-Hook in einer settings.json eingetragen? */
@@ -851,6 +859,87 @@ function planGeminiCli(cwd, { home = homedir(), global = false } = {}) {
   return actions;
 }
 
+// ─── Codex: Abruf-Hook (UserPromptSubmit, seit 0.4.10) ───────────────
+// Schema laut learn.chatgpt.com/docs/hooks: .codex/hooks.json (Projekt) oder
+// ~/.codex/hooks.json (alle Projekte) → hooks.UserPromptSubmit =
+// [{ hooks: [{ type: "command", command, timeout (s) }] }]. Klartext auf stdout
+// wird Kontext des Modells. Codex führt einen neuen oder geänderten Hook erst
+// aus, wenn der Nutzer ihn mit /hooks freigegeben hat; init trägt keine
+// Freigabe ein. `node <pfad>` läuft in jeder Shell.
+const CODEX_ZEITGRENZE_S = 15;
+
+function ensureCodexHookEntry(settings, command) {
+  const soll = { type: "command", command, timeout: CODEX_ZEITGRENZE_S };
+  settings.hooks = settings.hooks || {};
+  const arr = settings.hooks.UserPromptSubmit || [];
+  let present = false;
+  let mutated = false;
+  for (const group of arr) {
+    const hooks = group.hooks || [];
+    for (let i = 0; i < hooks.length; i++) {
+      if (typeof hooks[i].command === "string" && hooks[i].command.includes("knowmind_recall.mjs")) {
+        present = true;
+        if (JSON.stringify(hooks[i]) !== JSON.stringify(soll)) {
+          hooks[i] = soll;
+          mutated = true;
+        }
+      }
+    }
+  }
+  if (!present) {
+    arr.push({ hooks: [soll] });
+    mutated = true;
+  }
+  settings.hooks.UserPromptSubmit = arr;
+  return mutated;
+}
+
+/**
+ * Codex: Recall-Hook nur für dieses Projekt (Voreinstellung, ./.codex) oder für alle Projekte (~/.codex, nur mit
+ * --global oder Wahl im Dialog). Für alle Projekte fällt ein Eintrag aus einer früheren Einrichtung im Projekt weg.
+ */
+function planCodex(cwd, { home = homedir(), global = false } = {}) {
+  const actions = [];
+  const recallSrc = autoRecallHookSource();
+  const projektHook = join(cwd, ".codex", "hooks", "knowmind_recall.mjs");
+  const projektHooksJson = join(cwd, ".codex", "hooks.json");
+  const hookAktion = (label, pfad) => ({
+    label,
+    path: pfad,
+    ...writeOwnFile(pfad, recallSrc, ">>> knowmind auto-recall hook"),
+    content: recallSrc,
+    _own: true,
+    _exec: true,
+  });
+  const hooksJsonAktion = (label, pfad, aendern) => {
+    const s = settingsLesen(pfad);
+    if (s._parseError) {
+      return { label, path: pfad, action: "skip-foreign",
+        reason: "hooks.json ist kein gültiges JSON — bitte den Recall-Hook manuell eintragen" };
+    }
+    const m = aendern(s);
+    return { label, path: pfad, action: m ? (existsSync(pfad) ? "patch" : "create") : "unchanged",
+      content: JSON.stringify(s, null, 2) + "\n" };
+  };
+
+  if (!global) {
+    actions.push(hookAktion("Codex Recall-Hook (nur dieses Projekt)", projektHook));
+    actions.push(hooksJsonAktion("Codex .codex/hooks.json (Recall-Hook, nur dieses Projekt)", projektHooksJson,
+      (s) => ensureCodexHookEntry(s, "node .codex/hooks/knowmind_recall.mjs")));
+    return actions;
+  }
+  const globalHook = join(home, ".codex", "hooks", "knowmind_recall.mjs");
+  actions.push(hookAktion("Codex Recall-Hook (für alle Projekte)", globalHook));
+  actions.push(hooksJsonAktion("Codex ~/.codex/hooks.json (Recall-Hook für alle Projekte)",
+    join(home, ".codex", "hooks.json"), (s) => ensureCodexHookEntry(s, `node "${vorwaerts(globalHook)}"`)));
+  if (existsSync(projektHooksJson)) {
+    const a = hooksJsonAktion("Codex .codex/hooks.json (Recall-Eintrag im Projekt entfernt)", projektHooksJson,
+      (s) => entferneClaudeHookEntry(s, "UserPromptSubmit", "knowmind_recall.mjs"));
+    if (a.action !== "unchanged") actions.push(a);
+  }
+  return actions;
+}
+
 function hostVon(apiUrl) {
   try {
     return new URL(apiUrl).host;
@@ -861,20 +950,23 @@ function hostVon(apiUrl) {
 
 /** Ein Satz, was übertragen wird, und wie man es abschaltet. */
 function abrufHinweis({ global, apiUrl, home, client = "claude-code" }) {
-  const { name, ordner, ereignis } = ABRUF_CLIENTS[client];
+  const { name, ordner, ereignis, datei } = ABRUF_CLIENTS[client];
   const host = hostVon(apiUrl);
   const zeilen = [];
   if (global) {
     zeilen.push(`Abruf vor jeder Eingabe: in allen Projekten. Jede Eingabe in ${name} wird für den Abruf an ${host} übertragen.`);
   } else {
     zeilen.push(`Abruf vor jeder Eingabe: nur in diesem Projekt. Jede Eingabe in ${name} in diesem Projekt wird für den Abruf an ${host} übertragen.`);
-    if (recallEingetragen(join(home, ordner, "settings.json"), ereignis)) {
+    if (recallEingetragen(join(home, ordner, datei), ereignis)) {
       zeilen.push("Aus einer früheren Einrichtung ist der Abruf auch für alle Projekte eingetragen.");
       zeilen.push("Nur noch im Projekt: knowmind init --uninstall-hook, danach knowmind init.");
     }
     if (client === "gemini-cli") {
       zeilen.push("Gemini CLI führt Hooks eines Projekts nur in vertrauenswürdigen Ordnern aus und meldet einen neuen Hook beim ersten Start.");
     }
+  }
+  if (client === "codex") {
+    zeilen.push("Codex führt einen neuen Hook erst aus, wenn Sie ihn einmal freigeben: in Codex /hooks aufrufen und den knowmind-Abruf bestätigen.");
   }
   zeilen.push("Abschalten: knowmind init --uninstall-hook");
   zeilen.push("");
@@ -889,10 +981,10 @@ function abrufHinweis({ global, apiUrl, home, client = "claude-code" }) {
 export function runUninstallHook({ cwd = process.cwd(), home = homedir(), dryRun = false } = {}) {
   const zeilen = [`knowmind init --uninstall-hook${dryRun ? "  (dry-run — es wird NICHTS geschrieben)" : ""}`];
   const neuStarten = new Set();
-  for (const { name, ordner, ereignis } of Object.values(ABRUF_CLIENTS)) {
+  for (const { name, ordner, ereignis, datei } of Object.values(ABRUF_CLIENTS)) {
     for (const [wo, pfad] of [
-      ["alle Projekte", join(home, ordner, "settings.json")],
-      ["dieses Projekt", join(cwd, ordner, "settings.json")],
+      ["alle Projekte", join(home, ordner, datei)],
+      ["dieses Projekt", join(cwd, ordner, datei)],
     ]) {
       const settings = settingsLesen(pfad);
       if (settings._parseError) {
@@ -1129,8 +1221,12 @@ export async function runInit({ client = "auto", dryRun = false, cwd = process.c
     }
     else if (t === "cursor") allActions.push(...planCursor(cwd));
     // Codex liest AGENTS.md im Projekt (seit 0.4.1 schreibt init den Block
-    // dort hinein; bis 0.4.0 zeigte es ihn nur an).
-    else if (t === "codex") allActions.push(...planAgents(cwd));
+    // dort hinein; bis 0.4.0 zeigte es ihn nur an). Seit 0.4.10 dazu der Abruf
+    // vor jeder Eingabe als Hook UserPromptSubmit.
+    else if (t === "codex") {
+      allActions.push(...planAgents(cwd), ...planCodex(cwd, { home, global }));
+      lines.push(...abrufHinweis({ global, apiUrl: cfg.apiUrl, home, client: "codex" }));
+    }
     else {
       // generic / claude-desktop und alles ohne Hook-Mechanismus.
       const heading = t === "claude-desktop" ? "Claude Desktop:" : "Generischer Client:";

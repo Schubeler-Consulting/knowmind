@@ -59,7 +59,7 @@ Befehle:
                 [--api URL] [--project|--global] [--yes] [--dry-run] [--uninstall-hook]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
-                       Claude Code und Gemini CLI: Abruf vor jeder Eingabe; init fragt,
+                       Claude Code, Gemini CLI und Codex: Abruf vor jeder Eingabe; init fragt,
                        ob nur in diesem Projekt (Voreinstellung) oder in allen Projekten.
                        --global/--project legen es ohne Frage fest.
                        --uninstall-hook schaltet den Abruf wieder ab.
@@ -319,7 +319,7 @@ async function runInitCmd() {
     if (token) console.log(`Token gespeichert in ${where}.`);
   }
   const ziele = client === "auto" ? detectClients(process.cwd(), homedir()) : [client === "gemini" ? "gemini-cli" : client];
-  const mitAbruf = [["claude-code", "Claude Code"], ["gemini-cli", "Gemini CLI"]]
+  const mitAbruf = [["claude-code", "Claude Code"], ["gemini-cli", "Gemini CLI"], ["codex", "Codex"]]
     .filter(([schluessel]) => ziele.includes(schluessel)).map(([, name]) => name);
   const global = mitAbruf.length ? await abrufUmfang(mitAbruf) : false;
   console.log(await runInit({ client, dryRun, global }));
