@@ -44,7 +44,7 @@ claude mcp add knowmind --env KNOWMIND_TOKEN=kmt_xxx -- npx -y knowmind mcp
 
 Clients that cannot read the token from the environment get a placeholder to replace with your token. Running `install` again updates only the knowmind entry and keeps a token you entered; before it changes a file, it saves a copy next to it.
 
-`npx -y knowmind init` sets up memory hygiene in your client: a Claude Code hook that recalls before every prompt in all projects (`--project` limits it to the current one) and hooks that, when a turn contained something worth keeping (a deploy or commit, a new rule, an architecture decision, changed code or configuration) and nothing was stored yet, ask the model to store it before the turn ends, a rule file in Cursor, and a block in `AGENTS.md` that tells Codex when to ask knowmind and what to keep.
+`npx -y knowmind init` sets up memory hygiene in your client: a Claude Code hook that recalls before every prompt (init asks whether in this project only, the default, or in all projects; `--global`/`--project` decide without asking, `--uninstall-hook` turns it off) and hooks that, when a turn contained something worth keeping (a deploy or commit, a new rule, an architecture decision, changed code or configuration) and nothing was stored yet, ask the model to store it before the turn ends, a rule file in Cursor, and a block in `AGENTS.md` that tells Codex when to ask knowmind and what to keep.
 
 ## How knowmind stores facts
 

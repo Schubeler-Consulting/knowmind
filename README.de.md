@@ -77,11 +77,14 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 **Was eingerichtet wird:**
 
 - **Claude Code**:
-  - *UserPromptSubmit* in `~/.claude/` und damit in allen Projekten (mit `--project` nur in
-    `./.claude/`) → fragt vor jeder Eingabe knowmind ab und reicht die Treffer als Kontext nach,
-    auch bei Nachrichten anderer Sitzungen und aus Kanälen. Ohne belastbaren Treffer bleibt er
-    still, Beziehungen ohne Bestätigung tragen „(ungeprüft)“. Er wartet bis zu 8 Sekunden und
-    blockiert nie.
+  - *UserPromptSubmit* → fragt vor jeder Eingabe knowmind ab und reicht die Treffer als Kontext
+    nach, auch bei Nachrichten anderer Sitzungen und aus Kanälen. Ohne belastbaren Treffer bleibt
+    er still, Beziehungen ohne Bestätigung tragen „(ungeprüft)“. Er wartet bis zu 8 Sekunden und
+    blockiert nie. **Umfang:** `init` fragt, ob nur in diesem Projekt (`./.claude/`, Voreinstellung)
+    oder in allen Projekten (`~/.claude/`). In allen Projekten heißt: Jede Eingabe in Claude Code
+    wird für den Abruf an knowmind übertragen. `--project` oder `--global` legen es ohne Frage
+    fest, ohne Terminal oder mit `--yes` gilt nur dieses Projekt. `knowmind init --uninstall-hook`
+    schaltet den Abruf wieder ab.
   - projektlokal in `.claude/`:
     - *Stop* → hält das Ende der Runde an und fordert die KI auf, mit `knowmind_store_memory` zu
       sichern, wenn die Runde Sicherungswürdiges enthielt und noch nichts gespeichert wurde. Als
