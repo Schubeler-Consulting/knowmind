@@ -76,14 +76,18 @@ knowmind init --dry-run                # zeigt nur, was geschähe (schreibt nich
 
 **Was eingerichtet wird:**
 
-- **Claude Code** — projektlokale Hooks in `.claude/`:
-  - *UserPromptSubmit* → fragt vor jeder inhaltlichen Frage knowmind ab und reicht die
-    besten Treffer als Kontext nach (Memory-First, automatisch).
-  - *Stop* → hält das Ende der Runde an und fordert die KI auf, mit `knowmind_store_memory` zu
-    sichern, wenn die Runde Sicherungswürdiges enthielt und noch nichts gespeichert wurde. Als
-    sicherungswürdig gelten Deploy oder Commit, eine neue Regel, eine Architekturentscheidung und
-    geänderter Code oder geänderte Konfiguration.
-  - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
+- **Claude Code**:
+  - *UserPromptSubmit* in `~/.claude/` und damit in allen Projekten (mit `--project` nur in
+    `./.claude/`) → fragt vor jeder Eingabe knowmind ab und reicht die Treffer als Kontext nach,
+    auch bei Nachrichten anderer Sitzungen und aus Kanälen. Ohne belastbaren Treffer bleibt er
+    still, Beziehungen ohne Bestätigung tragen „(ungeprüft)“. Er wartet bis zu 8 Sekunden und
+    blockiert nie.
+  - projektlokal in `.claude/`:
+    - *Stop* → hält das Ende der Runde an und fordert die KI auf, mit `knowmind_store_memory` zu
+      sichern, wenn die Runde Sicherungswürdiges enthielt und noch nichts gespeichert wurde. Als
+      sicherungswürdig gelten Deploy oder Commit, eine neue Regel, eine Architekturentscheidung und
+      geänderter Code oder geänderte Konfiguration.
+    - ein **Memory-First-Block** in `./CLAUDE.md` (mit `<!-- BEGIN/END knowmind -->`-Markern).
 - **Cursor** — `.cursor/rules/knowmind.mdc` mit der Memory-First-Regel (`alwaysApply`).
 - **Codex** — ein Block in `AGENTS.md` (mit Markern wie bei `CLAUDE.md`): knowmind fragen, wenn
   eine Aufgabe von Entscheidungen, Absprachen oder Wissen außerhalb des Codes abhängt; Quellcode

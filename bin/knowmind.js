@@ -53,9 +53,11 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
-  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL] [--dry-run]
+  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL] [--project] [--dry-run]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
+                       Claude Code: Abruf vor jeder Eingabe in allen Projekten;
+                       --project richtet ihn nur für das aktuelle Projekt ein.
                        --token/--api legen die Config gleich mit an.
   knowmind config      Aktuelle Konfiguration anzeigen
   knowmind search "Frage" [-k 5] [--hops 2]
@@ -286,7 +288,8 @@ async function runInitCmd() {
     const where = saveConfig({ ...(token ? { token } : {}), ...(api ? { apiUrl: api } : {}) });
     if (token) console.log(`Token gespeichert in ${where}.`);
   }
-  console.log(await runInit({ client, dryRun }));
+  const projekt = args.includes("--project") || args.includes("--projekt");
+  console.log(await runInit({ client, dryRun, projekt }));
   if (!dryRun) finishOnboardingHint();
 }
 

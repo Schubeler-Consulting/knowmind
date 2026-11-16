@@ -1,5 +1,16 @@
 # Knowmind CLI — Änderungen
 
+## 0.4.7 (2026-11-16)
+
+- `knowmind init` richtet den Abruf vor jeder Eingabe in Claude Code jetzt für alle
+  Projekte ein (`~/.claude`). Wer ihn nur im aktuellen Projekt will, nimmt `--project`.
+  Ein Recall-Hook aus einer früheren Einrichtung im Projekt tritt dahinter zurück, damit je
+  Eingabe ein Abruf läuft.
+- Der Abruf läuft auch bei Nachrichten anderer Sitzungen und aus Kanälen; Hinweise des
+  Systems lösen keinen Abruf aus. Ohne belastbaren Treffer bleibt er still, Beziehungen ohne
+  Bestätigung tragen „(ungeprüft)“.
+- Verbesserungen der Stabilität.
+
 ## 0.4.6 (2026-11-01)
 
 - Verbesserungen der Stabilität.
