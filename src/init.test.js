@@ -111,17 +111,23 @@ test("runInit echter Lauf + zweiter Lauf = idempotent", async () => {
   mkdirSync(join(dir, ".claude"));
 
   await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
-  const recall = join(dir, ".claude", "hooks", "knowmind_recall.mjs");
+  // Der Recall gilt für alle Projekte: Hook und Eintrag liegen unter ~/.claude.
+  const recall = join(home, ".claude", "hooks", "knowmind_recall.mjs");
+  const homeSettingsPath = join(home, ".claude", "settings.json");
   const capture = join(dir, ".claude", "hooks", "knowmind_capture.mjs");
   const settingsPath = join(dir, ".claude", "settings.json");
   const claudeMd = join(dir, "CLAUDE.md");
   assert.ok(existsSync(recall));
+  assert.ok(!existsSync(join(dir, ".claude", "hooks", "knowmind_recall.mjs")), "keine Projektkopie");
   assert.ok(existsSync(capture));
   assert.ok(existsSync(settingsPath));
   assert.ok(existsSync(claudeMd));
 
+  const homeSettings1 = JSON.parse(readFileSync(homeSettingsPath, "utf-8"));
+  assert.equal(homeSettings1.hooks.UserPromptSubmit.length, 1);
+  assert.match(homeSettings1.hooks.UserPromptSubmit[0].hooks[0].command, /knowmind_recall\.mjs/);
   const settings1 = JSON.parse(readFileSync(settingsPath, "utf-8"));
-  assert.equal(settings1.hooks.UserPromptSubmit.length, 1);
+  assert.equal(settings1.hooks.UserPromptSubmit, undefined, "kein zweiter Recall im Projekt");
   assert.equal(settings1.hooks.Stop.length, 1);
 
   const md1 = readFileSync(claudeMd, "utf-8");
@@ -130,8 +136,9 @@ test("runInit echter Lauf + zweiter Lauf = idempotent", async () => {
 
   // Zweiter Lauf
   await runInit({ client: "claude-code", dryRun: false, cwd: dir, home });
+  const homeSettings2 = JSON.parse(readFileSync(homeSettingsPath, "utf-8"));
+  assert.equal(homeSettings2.hooks.UserPromptSubmit.length, 1, "kein doppelter UserPromptSubmit-Hook");
   const settings2 = JSON.parse(readFileSync(settingsPath, "utf-8"));
-  assert.equal(settings2.hooks.UserPromptSubmit.length, 1, "kein doppelter UserPromptSubmit-Hook");
   assert.equal(settings2.hooks.Stop.length, 1, "kein doppelter Stop-Hook");
 
   const md2 = readFileSync(claudeMd, "utf-8");
