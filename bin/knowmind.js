@@ -19,6 +19,7 @@ import {
   uploadDocument,
   stats,
   health,
+  HERKUNFT_CLI,
 } from "../src/client.js";
 import { loadConfig, saveConfig, configPath, VERSION } from "../src/config.js";
 import { runStdioServer } from "../src/mcp-stdio.js";
@@ -54,12 +55,12 @@ Knowmind ${VERSION} — Das Gedächtnis für Ihre KI
 Befehle:
   knowmind login [--token kmt_TOKEN] [--api https://knowmind.de]
                        Token speichern
-  knowmind init [--client claude-code|cursor|codex|auto] [--token kmt_TOKEN] [--api URL]
-                [--project|--global] [--yes] [--dry-run] [--uninstall-hook]
+  knowmind init [--client claude-code|gemini-cli|cursor|codex|auto] [--token kmt_TOKEN]
+                [--api URL] [--project|--global] [--yes] [--dry-run] [--uninstall-hook]
                        Automatische Gedächtnis-Pflege im KI-Client einrichten
                        (Hooks/Regeln + Memory-First-Block). Idempotent.
-                       Claude Code: Abruf vor jeder Eingabe; init fragt, ob nur in
-                       diesem Projekt (Voreinstellung) oder in allen Projekten.
+                       Claude Code und Gemini CLI: Abruf vor jeder Eingabe; init fragt,
+                       ob nur in diesem Projekt (Voreinstellung) oder in allen Projekten.
                        --global/--project legen es ohne Frage fest.
                        --uninstall-hook schaltet den Abruf wieder ab.
                        --token/--api legen die Config gleich mit an.
@@ -156,7 +157,7 @@ async function runLogin() {
   process.stdout.write("Token wird gegen Server verifiziert … ");
   const r = await fetch(`${apiUrl}/api/mcp/v1`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...HERKUNFT_CLI },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
@@ -280,11 +281,11 @@ async function runStatus() {
 }
 
 /**
- * Umfang des Abrufs vor jeder Eingabe (Claude Code): nur dieses Projekt oder alle Projekte.
+ * Umfang des Abrufs vor jeder Eingabe (Claude Code, Gemini CLI): nur dieses Projekt oder alle Projekte.
  * --global bzw. --project entscheiden; sonst fragt init im Dialog. Ohne Dialog (kein Terminal, CI, --yes) gilt
  * nur dieses Projekt: Für alle Projekte heißt, jede Eingabe aus jedem Projekt geht an knowmind.
  */
-async function abrufUmfang() {
+async function abrufUmfang(namen) {
   if (args.includes("--global")) return true;
   if (args.includes("--project") || args.includes("--projekt")) return false;
   if (args.includes("--yes") || args.includes("-y") || !process.stdin.isTTY || !process.stdout.isTTY) return false;
@@ -292,7 +293,7 @@ async function abrufUmfang() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
     const antwort = (await rl.question(
-      "Abruf vor jeder Eingabe in Claude Code: [1] nur dieses Projekt (empfohlen)  [2] alle Projekte — Auswahl [1]: ",
+      `Abruf vor jeder Eingabe in ${namen.join(" und ")}: [1] nur dieses Projekt (empfohlen)  [2] alle Projekte — Auswahl [1]: `,
     )).trim();
     return antwort === "2";
   } finally {
@@ -317,9 +318,10 @@ async function runInitCmd() {
     const where = saveConfig({ ...(token ? { token } : {}), ...(api ? { apiUrl: api } : {}) });
     if (token) console.log(`Token gespeichert in ${where}.`);
   }
-  const claudeCode = client === "claude-code" ||
-    (client === "auto" && detectClients(process.cwd(), homedir()).includes("claude-code"));
-  const global = claudeCode ? await abrufUmfang() : false;
+  const ziele = client === "auto" ? detectClients(process.cwd(), homedir()) : [client === "gemini" ? "gemini-cli" : client];
+  const mitAbruf = [["claude-code", "Claude Code"], ["gemini-cli", "Gemini CLI"]]
+    .filter(([schluessel]) => ziele.includes(schluessel)).map(([, name]) => name);
+  const global = mitAbruf.length ? await abrufUmfang(mitAbruf) : false;
   console.log(await runInit({ client, dryRun, global }));
   if (!dryRun) finishOnboardingHint();
 }
